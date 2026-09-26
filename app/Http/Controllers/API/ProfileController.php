@@ -21,6 +21,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'preferred_language' => $user->preferredLanguageOrDefault(),
+                'discount_margin_percent' => $user->discountMarginPercent(),
                 'is_active' => (bool) $user->is_active,
             ],
         ]);
@@ -40,6 +41,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'preferred_language' => $user->preferredLanguageOrDefault(),
+                'discount_margin_percent' => $user->discountMarginPercent(),
                 'is_active' => (bool) $user->is_active,
             ],
         ]);

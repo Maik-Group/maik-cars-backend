@@ -14,25 +14,28 @@ class UserForm
     {
         return $schema
             ->components([
-                Section::make('Admin account')
-                    ->description('Manage dashboard administrator accounts and active status.')
+                Section::make(__('admin.ui.admins.account'))
+                    ->description(__('admin.ui.admins.description'))
                     ->columns([
                         'default' => 1,
                         'md' => 2,
                     ])
                     ->components([
                         TextInput::make('name')
-                            ->placeholder('Enter admin name')
+                            ->label(__('admin.ui.admins.name'))
+                            ->placeholder(__('admin.ui.admins.name_placeholder'))
                             ->required()
                             ->maxLength(255),
                         TextInput::make('email')
+                            ->label(__('admin.ui.admins.email'))
                             ->placeholder('admin@example.com')
                             ->email()
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         TextInput::make('password')
-                            ->placeholder('Enter password')
+                            ->label(__('admin.ui.admins.password'))
+                            ->placeholder(__('admin.ui.admins.password_placeholder'))
                             ->password()
                             ->revealable()
                             ->dehydrated(fn ($state): bool => filled($state))
@@ -40,7 +43,7 @@ class UserForm
                             ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
                             ->maxLength(255),
                         Toggle::make('is_active')
-                            ->label('Active')
+                            ->label(__('admin.ui.admins.active'))
                             ->default(true),
                     ]),
             ]);

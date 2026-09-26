@@ -18,13 +18,13 @@ test('profile update accepts preferred language', function () {
     $response = patchJson('/api/profile', [
         'name' => 'Updated Name',
         'email' => $user->email,
-        'preferred_language' => 'ar',
+        'preferredLanguage' => 'hr',
     ]);
 
     $response->assertOk();
-    $response->assertJsonPath('data.preferredLanguage', 'ar');
+    $response->assertJsonPath('data.preferredLanguage', 'hr');
 
-    expect($user->fresh()->preferred_language)->toBe('ar');
+    expect($user->fresh()->preferred_language)->toBe('hr');
 });
 
 test('profile update rejects invalid preferred language', function () {
@@ -35,7 +35,7 @@ test('profile update rejects invalid preferred language', function () {
     $response = patchJson('/api/profile', [
         'name' => $user->name,
         'email' => $user->email,
-        'preferred_language' => 'de',
+        'preferredLanguage' => 'xx',
     ]);
 
     $response->assertUnprocessable();

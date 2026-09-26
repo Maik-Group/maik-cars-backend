@@ -29,6 +29,26 @@ class ItemFilterMappingResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.pricing_review');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.settings');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.pricing_mapping');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.pricing_review');
+    }
+
     protected static ?int $navigationSort = 15;
 
     public static function form(Schema $schema): Schema

@@ -25,6 +25,26 @@ class CarGroupResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Catalog Management';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.car_groups');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.catalog_management');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.car_group');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.car_groups');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return CarGroupForm::configure($schema);

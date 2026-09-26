@@ -12,11 +12,12 @@ class CarGroupForm
     {
         return $schema
             ->components([
-                Section::make('Car group details')
-                    ->description('Manage the category name used for catalog items.')
+                Section::make(__('admin.ui.car_groups.section'))
+                    ->description(__('admin.ui.car_groups.description'))
                     ->components([
                         TextInput::make('name')
-                            ->placeholder('Enter car group name')
+                            ->label(__('admin.ui.car_groups.name'))
+                            ->placeholder(__('admin.ui.car_groups.name_placeholder'))
                             ->required()
                             ->maxLength(255),
                     ]),

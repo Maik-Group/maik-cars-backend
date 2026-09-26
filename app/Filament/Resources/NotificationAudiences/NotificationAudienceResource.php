@@ -25,6 +25,26 @@ class NotificationAudienceResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Communication';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.audience_groups');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.communication');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.audience_group');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.audience_groups');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return NotificationAudienceForm::configure($schema);

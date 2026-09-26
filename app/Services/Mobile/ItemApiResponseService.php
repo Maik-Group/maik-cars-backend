@@ -93,7 +93,7 @@ class ItemApiResponseService
             : 'USD';
 
         $siblings = Item::query()
-            ->calculablePrice()
+            ->apiVisible()
             ->whereIn('normalized_serial', $serials->all())
             ->get()
             ->groupBy(fn (Item $item): string => $this->normalizedSerial($item));

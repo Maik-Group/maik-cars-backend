@@ -17,24 +17,26 @@ class UsersTable
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label(__('admin.ui.admins.name'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('email')
+                    ->label(__('admin.ui.admins.email'))
                     ->searchable()
                     ->sortable()
                     ->copyable(),
                 IconColumn::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.admins.active'))
                     ->boolean(),
                 TextColumn::make('created_at')
-                    ->label('Created')
+                    ->label(__('admin.ui.admins.created'))
                     ->since()
                     ->sortable(),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.admins.active'))
                     ->boolean(),
             ])
             ->recordActions([

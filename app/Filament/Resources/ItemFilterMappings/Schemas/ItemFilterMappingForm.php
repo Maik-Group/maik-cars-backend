@@ -18,8 +18,8 @@ class ItemFilterMappingForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Manual filter mapping')
-                ->description('Choose the catalyst product and the matching filter reference. Saving applies this manual mapping immediately.')
+            Section::make(__('admin.ui.pricing_review.manual_mapping'))
+                ->description(__('admin.ui.pricing_review.manual_mapping_desc'))
                 ->columns(2)
                 ->components([
                     Select::make('item_id')
@@ -28,29 +28,29 @@ class ItemFilterMappingForm
                         ->preload(false)
                         ->required()
                         ->live()
-                        ->label('Catalyst product')
-                        ->helperText('Select the product whose filter reference needs to be corrected.'),
+                        ->label(__('admin.ui.pricing_review.catalyst_product'))
+                        ->helperText(__('admin.ui.pricing_review.catalyst_help')),
                     Select::make('filter_item_id')
                         ->relationship('filterItem', 'serial_code')
                         ->searchable()
                         ->preload(false)
                         ->required()
                         ->live()
-                        ->label('Matching filter reference')
-                        ->helperText('Select the filter-only item that should be used as the pricing reference.'),
+                        ->label(__('admin.ui.pricing_review.matching_filter'))
+                        ->helperText(__('admin.ui.pricing_review.matching_filter_help')),
                     TextInput::make('filter_weight_override')
-                        ->label('Corrected filter weight (optional)')
+                        ->label(__('admin.ui.pricing_review.corrected_filter_weight'))
                         ->numeric()
                         ->minValue(0)
                         ->step(0.001)
                         ->suffix('kg')
                         ->nullable()
                         ->live(debounce: 350)
-                        ->helperText('Enter a verified filter weight only when the stored or detected weight is wrong. When provided, this value is applied immediately with the manual mapping.'),
+                        ->helperText(__('admin.ui.pricing_review.corrected_filter_help')),
                 ]),
 
-            Section::make('Pricing impact preview')
-                ->description('Preview the pricing effect before saving. Saving applies the mapping immediately.')
+            Section::make(__('admin.ui.pricing_review.pricing_preview'))
+                ->description(__('admin.ui.pricing_review.pricing_preview_desc'))
                 ->components([
                     Text::make(fn (Get $get): string => self::pricingPreview($get)),
                 ]),
@@ -62,19 +62,19 @@ class ItemFilterMappingForm
         $itemId = $get('item_id');
 
         if (blank($itemId)) {
-            return 'Select a catalyst product first to preview the pricing impact.';
+            return __('admin.ui.pricing_review.select_product_first');
         }
 
         $item = Item::query()->find($itemId);
         if (! $item instanceof Item) {
-            return 'The selected catalyst product could not be loaded.';
+            return __('admin.ui.pricing_review.product_load_failed');
         }
 
         $filterItemId = $get('filter_item_id');
         $weightOverride = $get('filter_weight_override');
 
         if (blank($filterItemId)) {
-            return 'Select a matching filter reference to calculate the preview.';
+            return __('admin.ui.pricing_review.select_filter');
         }
 
         $mapping = new ItemFilterMapping([
@@ -102,11 +102,10 @@ class ItemFilterMappingForm
         );
 
         if (! ($assay['applied'] ?? false)) {
-            return sprintf(
-                'Current price: $%s. Preview not available yet: %s.',
-                number_format($currentPrice, 2),
-                self::previewReason((string) ($assay['reason'] ?? 'missing_reference')),
-            );
+            return __('admin.ui.pricing_review.preview_not_available', [
+                'current' => number_format($currentPrice, 2),
+                'reason' => self::previewReason((string) ($assay['reason'] ?? 'missing_reference')),
+            ]);
         }
 
         $previewPrice = $priceService->priceForMappingPreview(
@@ -121,22 +120,21 @@ class ItemFilterMappingForm
             ? ($delta / $currentPrice) * 100
             : 0.0;
 
-        return sprintf(
-            'Current price: $%s → Preview: $%s (%+.2f%%). Net catalyst weight after filter correction: %s kg. Saving will apply this manual filter mapping immediately.',
-            number_format($currentPrice, 2),
-            number_format($previewPrice, 2),
-            $deltaPercent,
-            number_format((float) $assay['weight_kg'], 3),
-        );
+        return __('admin.ui.pricing_review.preview_line', [
+            'current' => number_format($currentPrice, 2),
+            'preview' => number_format($previewPrice, 2),
+            'delta' => sprintf('%+.2f', $deltaPercent),
+            'weight' => number_format((float) $assay['weight_kg'], 3),
+        ]);
     }
 
     private static function previewReason(string $reason): string
     {
         return match ($reason) {
-            'missing_filter_weight' => 'the selected reference does not provide a usable filter weight',
-            'invalid_net_weight' => 'the filter weight is equal to or greater than the product weight',
-            'implausible_net_weight' => 'the resulting catalyst weight fails the safety check',
-            default => 'more filter reference data is required',
+            'missing_filter_weight' => __('admin.ui.pricing_review.reason_missing_filter_weight'),
+            'invalid_net_weight' => __('admin.ui.pricing_review.reason_invalid_net_weight'),
+            'implausible_net_weight' => __('admin.ui.pricing_review.reason_implausible_net_weight'),
+            default => __('admin.ui.pricing_review.reason_more_data'),
         };
     }
 }

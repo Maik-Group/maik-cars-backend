@@ -23,7 +23,7 @@ function fakeMessaging(): void
 {
     $messaging = Mockery::mock(Messaging::class);
     $messaging->shouldReceive('send')->andReturnUsing(
-        fn () => 'projects/test/messages/'.str()->uuid()->toString()
+        fn (): array => ['name' => 'projects/test/messages/'.str()->uuid()->toString()]
     );
 
     app()->instance(Messaging::class, $messaging);
@@ -245,4 +245,37 @@ test('service treats empty rich text locale fields as missing and falls back to 
         ->and($recipient->language_used)->toBe('en')
         ->and($notification)->not->toBeNull()
         ->and($notification->data['title'])->toContain('<strong>English title</strong>');
+});
+
+test('service sends croatian content to users who selected croatian', function () {
+    fakeMessaging();
+    seedRole('admin');
+    seedRole('app_user');
+
+    $sender = User::factory()->create()->assignRole('admin');
+    $croatianUser = User::factory()->create([
+        'preferred_language' => 'hr',
+        'is_active' => true,
+    ])->assignRole('app_user');
+
+    $campaign = app(AdminNotificationCampaignService::class)->sendCampaign($sender, [
+        'audience_mode' => 'specific',
+        'user_ids' => [$croatianUser->id],
+        'type' => NotificationType::GENERALE_NOTIFICATION,
+        'title_en' => 'English title',
+        'body_en' => 'English body',
+        'title_hr' => 'Hrvatski naslov',
+        'body_hr' => 'Hrvatski sadržaj',
+    ]);
+
+    $recipient = $campaign->recipients->firstWhere('user_id', $croatianUser->id);
+    $notification = $croatianUser->notifications()->latest()->first();
+
+    expect($recipient)->not->toBeNull()
+        ->and($recipient->preferred_language)->toBe('hr')
+        ->and($recipient->language_used)->toBe('hr')
+        ->and($notification)->not->toBeNull()
+        ->and($notification->data['title'])->toBe('Hrvatski naslov')
+        ->and($notification->data['body'])->toBe('Hrvatski sadržaj')
+        ->and($campaign->title_hr)->toBe('Hrvatski naslov');
 });

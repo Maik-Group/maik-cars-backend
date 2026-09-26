@@ -2,7 +2,16 @@
 
 use App\Enums\AppPlatform;
 use App\Models\AppVersion;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/dashboard/language/{locale}', function (Request $request, string $locale) {
+    abort_unless(in_array($locale, ['en', 'ar', 'de', 'bg'], true), 404);
+
+    $request->session()->put('dashboard_locale', $locale);
+
+    return redirect()->back();
+})->name('dashboard.language');
 
 Route::get('/', function () {
     $defaultStoreIds = [
@@ -21,7 +30,7 @@ Route::get('/', function () {
             $storeId = trim((string) AppVersion::query()
                 ->where('platform', $platform)
                 ->value('store_id'));
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $storeId = '';
         }
 

@@ -19,15 +19,15 @@ class AppUserForm
     {
         return $schema
             ->components([
-                Section::make('App user account')
-                    ->description('Manage end-user accounts, status, and notification language preference.')
+                Section::make(__('admin.ui.app_users.account'))
+                    ->description(__('admin.ui.app_users.account_description'))
                     ->columns([
                         'default' => 1,
                         'md' => 2,
                     ])
                     ->components([
                         TextInput::make('name')
-                            ->placeholder('Enter user name')
+                            ->placeholder(__('admin.ui.app_users.name_placeholder'))
                             ->required()
                             ->maxLength(255),
                         TextInput::make('email')
@@ -37,7 +37,7 @@ class AppUserForm
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         TextInput::make('password')
-                            ->placeholder('Enter password')
+                            ->placeholder(__('admin.ui.app_users.password_placeholder'))
                             ->password()
                             ->revealable()
                             ->dehydrated(fn ($state): bool => filled($state))
@@ -45,41 +45,53 @@ class AppUserForm
                             ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
                             ->maxLength(255),
                         Toggle::make('is_active')
-                            ->label('Active')
+                            ->label(__('admin.ui.app_users.active'))
                             ->default(true),
                         Toggle::make('unlimited_devices')
-                            ->label('Unlimited devices')
+                            ->label(__('admin.ui.app_users.unlimited_devices'))
                             ->default(false),
+                        TextInput::make('discount_margin_percent')
+                            ->label(__('admin.ui.app_users.discount_margin'))
+                            ->numeric()
+                            ->minValue(-100)
+                            ->maxValue(4)
+                            ->step(1)
+                            ->default(0)
+                            ->suffix('%')
+                            ->helperText(__('admin.ui.app_users.discount_help')),
                         Select::make('preferred_language')
-                            ->label('Preferred language')
-                            ->placeholder('Select language')
+                            ->label(__('admin.ui.app_users.preferred_language'))
+                            ->placeholder(__('admin.ui.app_users.select_language'))
                             ->options([
                                 PreferredLanguage::EN->value => 'English',
                                 PreferredLanguage::AR->value => 'Arabic',
-                                PreferredLanguage::HU->value => 'Hungarian',
+                                PreferredLanguage::BG->value => 'Bulgarian',
+                                PreferredLanguage::DE->value => 'German',
+                                PreferredLanguage::HR->value => 'Croatian',
+                                PreferredLanguage::HU->value => 'Hungarian (legacy)',
                             ])
                             ->default(PreferredLanguage::EN->value)
                             ->required(),
                     ]),
-                Section::make('Authorized mobile device')
-                    ->description('Standard accounts use Device ID as the permanent identity, with FCM as a temporary fallback. Unlimited-device accounts bypass the device restriction.')
+                Section::make(__('admin.ui.app_users.authorized_device_section'))
+                    ->description(__('admin.ui.app_users.authorized_device_description'))
                     ->visible(fn (string $operation): bool => $operation === 'edit')
                     ->columns(2)
                     ->components([
                         Placeholder::make('device_binding_status')
-                            ->label('Device status')
+                            ->label(__('admin.ui.app_users.device_status'))
                             ->content(fn (?User $record): HtmlString => new HtmlString(match (true) {
-                                $record?->unlimited_devices === true => '<strong style="color:#15803d">Unlimited devices</strong>',
-                                $record?->hasAuthorizedDeviceId() === true => '<strong style="color:#15803d">Bound by Device ID</strong>',
-                                $record?->hasAuthorizedDevice() === true => '<strong style="color:#b45309">Temporarily bound by FCM</strong>',
-                                default => '<strong style="color:#b45309">Not bound yet</strong>',
+                                $record?->unlimited_devices === true => '<strong style="color:#15803d">'.__('admin.ui.app_users.unlimited_devices').'</strong>',
+                                $record?->hasAuthorizedDeviceId() === true => '<strong style="color:#15803d">'.__('admin.ui.app_users.bound_device_id').'</strong>',
+                                $record?->hasAuthorizedDevice() === true => '<strong style="color:#b45309">'.__('admin.ui.app_users.bound_fcm').'</strong>',
+                                default => '<strong style="color:#b45309">'.__('admin.ui.app_users.not_bound_yet').'</strong>',
                             })),
                         Placeholder::make('device_bound_at_display')
-                            ->label('Bound since')
+                            ->label(__('admin.ui.app_users.bound_since'))
                             ->content(fn (?User $record): string => $record?->device_bound_at?->format('Y-m-d H:i:s') ?? '—'),
                         Placeholder::make('device_binding_help')
-                            ->label('How it works')
-                            ->content('If the user changes phones or reinstalls the app, use Reset authorized device from the App Users table. The next successful login will claim the account for the new installation.')
+                            ->label(__('admin.ui.app_users.how_it_works'))
+                            ->content(__('admin.ui.app_users.device_help'))
                             ->columnSpanFull(),
                     ]),
             ]);

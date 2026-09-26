@@ -10,6 +10,21 @@ class Dashboard extends \Filament\Pages\Dashboard
 {
     protected static string|\UnitEnum|null $navigationGroup = 'Insights';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.dashboard');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.insights');
+    }
+
+    public function getTitle(): string
+    {
+        return __('admin.nav.dashboard');
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('view_statistics') ?? false;
@@ -17,7 +32,7 @@ class Dashboard extends \Filament\Pages\Dashboard
 
     public function getSubheading(): ?string
     {
-        return 'Track key platform metrics and market movement at a glance.';
+        return __('admin.ui.subheadings.dashboard');
     }
 
     /**

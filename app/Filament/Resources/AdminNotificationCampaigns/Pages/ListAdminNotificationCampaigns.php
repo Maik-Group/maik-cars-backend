@@ -13,14 +13,14 @@ class ListAdminNotificationCampaigns extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Review previously sent campaigns and delivery outcomes.';
+        return __('admin.ui.subheadings.campaigns');
     }
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('sendNotification')
-                ->label('Send notification')
+                ->label(__('admin.nav.send_notifications'))
                 ->icon('heroicon-o-paper-airplane')
                 ->url(SendNotifications::getUrl())
                 ->visible(fn (): bool => auth()->user()?->can('send_notifications') ?? false),

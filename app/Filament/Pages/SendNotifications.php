@@ -34,6 +34,21 @@ class SendNotifications extends Page implements HasActions, HasSchemas
 
     protected static string|\UnitEnum|null $navigationGroup = 'Communication';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.send_notifications');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.communication');
+    }
+
+    public function getTitle(): string
+    {
+        return __('admin.nav.send_notifications');
+    }
+
     protected static string $routePath = 'send-notifications';
 
     protected string $view = 'filament.pages.send-notifications';
@@ -55,32 +70,32 @@ class SendNotifications extends Page implements HasActions, HasSchemas
 
     public function getSubheading(): ?string
     {
-        return 'Compose and send multilingual push/in-app notifications.';
+        return __('admin.ui.subheadings.send_notifications');
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Audience')
-                    ->description('Send to specific users, reusable audience groups, or all active app users.')
+                Section::make(__('admin.ui.notifications.audience'))
+                    ->description(__('admin.ui.notifications.audience_description'))
                     ->columns([
                         'default' => 1,
                         'md' => 2,
                     ])
                     ->components([
                         Select::make('audience_mode')
-                            ->label('Audience mode')
+                            ->label(__('admin.ui.notifications.audience_mode'))
                             ->options([
-                                'specific' => 'Specific users',
-                                'audience' => 'Audience group',
-                                'all' => 'All active app users',
+                                'specific' => __('admin.ui.notifications.specific_users'),
+                                'audience' => __('admin.ui.notifications.audience_group'),
+                                'all' => __('admin.ui.notifications.all_active_users'),
                             ])
                             ->default('specific')
                             ->required()
                             ->live(),
                         Select::make('audience_id')
-                            ->label('Audience group')
+                            ->label(__('admin.ui.notifications.audience_group'))
                             ->options(fn (): array => NotificationAudience::query()
                                 ->where('is_active', true)
                                 ->orderBy('name')
@@ -90,7 +105,7 @@ class SendNotifications extends Page implements HasActions, HasSchemas
                             ->required(fn (Get $get): bool => $get('audience_mode') === 'audience')
                             ->searchable(),
                         Select::make('user_ids')
-                            ->label('Specific users')
+                            ->label(__('admin.ui.notifications.specific_users'))
                             ->multiple()
                             ->options(fn (): array => User::query()
                                 ->appUsers()
@@ -105,42 +120,72 @@ class SendNotifications extends Page implements HasActions, HasSchemas
                         Hidden::make('type')
                             ->default(NotificationType::GENERALE_NOTIFICATION),
                     ]),
-                Section::make('Localized content')
-                    ->description('English content is required. Arabic and Hungarian are optional and fallback to English. Rich formatting and emojis are supported.')
+                Section::make(__('admin.ui.notifications.localized_content'))
+                    ->description(__('admin.ui.notifications.localized_description'))
                     ->columns([
                         'default' => 1,
                         'lg' => 2,
                     ])
                     ->components([
                         RichEditor::make('title_en')
-                            ->label('Title (English)')
+                            ->label(__('admin.ui.notifications.title_en'))
                             ->required()
                             ->maxLength(150)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
                         RichEditor::make('title_ar')
-                            ->label('Title (Arabic)')
+                            ->label(__('admin.ui.notifications.title_ar'))
                             ->maxLength(150)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
                         RichEditor::make('body_en')
-                            ->label('Body (English)')
+                            ->label(__('admin.ui.notifications.body_en'))
                             ->required()
                             ->maxLength(500)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
                         RichEditor::make('body_ar')
-                            ->label('Body (Arabic)')
+                            ->label(__('admin.ui.notifications.body_ar'))
+                            ->maxLength(500)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('title_bg')
+                            ->label(__('admin.ui.notifications.title_bg'))
+                            ->maxLength(150)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('body_bg')
+                            ->label(__('admin.ui.notifications.body_bg'))
+                            ->maxLength(500)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('title_de')
+                            ->label(__('admin.ui.notifications.title_de'))
+                            ->maxLength(150)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('body_de')
+                            ->label(__('admin.ui.notifications.body_de'))
+                            ->maxLength(500)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('title_hr')
+                            ->label(__('admin.ui.notifications.title_hr'))
+                            ->maxLength(150)
+                            ->toolbarButtons($this->editorToolbarButtons())
+                            ->disableToolbarButtons(['attachFiles']),
+                        RichEditor::make('body_hr')
+                            ->label(__('admin.ui.notifications.body_hr'))
                             ->maxLength(500)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
                         RichEditor::make('title_hu')
-                            ->label('Title (Hungarian)')
+                            ->label(__('admin.ui.notifications.title_hu'))
                             ->maxLength(150)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
                         RichEditor::make('body_hu')
-                            ->label('Body (Hungarian)')
+                            ->label(__('admin.ui.notifications.body_hu'))
                             ->maxLength(500)
                             ->toolbarButtons($this->editorToolbarButtons())
                             ->disableToolbarButtons(['attachFiles']),
@@ -156,7 +201,7 @@ class SendNotifications extends Page implements HasActions, HasSchemas
 
         if (! $sender) {
             Notification::make()
-                ->title('Unauthorized request')
+                ->title(__('admin.ui.notifications.unauthorized'))
                 ->danger()
                 ->send();
 
@@ -170,8 +215,8 @@ class SendNotifications extends Page implements HasActions, HasSchemas
             app(AdminNotificationCampaignService::class)->sendCampaign($sender, $data);
 
             Notification::make()
-                ->title('Notification campaign sent')
-                ->body('The campaign has been sent and logged in notification history.')
+                ->title(__('admin.ui.notifications.sent'))
+                ->body(__('admin.ui.notifications.sent_body'))
                 ->success()
                 ->send();
 
@@ -181,7 +226,7 @@ class SendNotifications extends Page implements HasActions, HasSchemas
             ]);
         } catch (Throwable $exception) {
             Notification::make()
-                ->title('Unable to send campaign')
+                ->title(__('admin.ui.notifications.unable'))
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();

@@ -22,7 +22,7 @@ class ItemForm
     {
         return $schema
             ->components([
-                Section::make('Warning')
+                Section::make(__('admin.ui.item_form.warning'))
                     ->icon('heroicon-o-exclamation-triangle')
                     ->visible(fn (?Item $record): bool => $record?->filterMapping?->status === ItemFilterMapping::STATUS_NEEDS_REVIEW)
                     ->schema([
@@ -41,16 +41,16 @@ class ItemForm
 
                                 return new HtmlString(
                                     '<div class="text-sm">'
-                                    .'<div class="font-semibold text-warning-600 dark:text-warning-400">This item needs review and is not currently shown in the app.</div>'
-                                    .'<div class="mt-2"><strong>Reason:</strong> '.$reason.'</div>'
-                                    .'<div class="mt-1"><strong>Review note:</strong> '.$note.'</div>'
+                                    .'<div class="font-semibold text-warning-600 dark:text-warning-400">'.__('admin.ui.item_form.needs_review').'</div>'
+                                    .'<div class="mt-2"><strong>'.__('admin.ui.item_form.reason').':</strong> '.$reason.'</div>'
+                                    .'<div class="mt-1"><strong>'.__('admin.ui.item_form.review_note').':</strong> '.$note.'</div>'
                                     .'</div>',
                                 );
                             }),
                     ])
                     ->columnSpanFull(),
-                Section::make('Item details')
-                    ->description('Manage converter specs, category mapping, and app-ready media.')
+                Section::make(__('admin.ui.item_form.section'))
+                    ->description(__('admin.ui.item_form.description'))
                     ->columns([
                         'default' => 1,
                         'md' => 2,
@@ -58,20 +58,21 @@ class ItemForm
                     ->columnSpanFull()
                     ->components([
                         Select::make('car_group_id')
-                            ->label('Car group')
+                            ->label(__('admin.ui.item_form.car_group'))
                             ->relationship('carGroup', 'name')
                             ->required()
                             ->searchable()
                             ->preload(),
                         TextInput::make('model')
+                            ->label(__('admin.ui.item_form.model'))
                             ->maxLength(255)
                             ->required(),
                         TextInput::make('serial_code')
-                            ->label('Serial code')
+                            ->label(__('admin.ui.item_form.serial_code'))
                             ->maxLength(255)
                             ->required(),
                         TextInput::make('weight_kg')
-                            ->label('Weight (kg)')
+                            ->label(__('admin.ui.item_form.weight'))
                             ->numeric()
                             ->step(0.001)
                             ->minValue(0),
@@ -91,16 +92,17 @@ class ItemForm
                             ->step(0.0001)
                             ->minValue(0),
                         Placeholder::make('current_price')
-                            ->label('Current price (USD)')
+                            ->label(__('admin.ui.item_form.current_price'))
                             ->visible(fn (?Item $record): bool => $record instanceof Item)
                             ->content(fn (?Item $record): string => $record instanceof Item
                                 ? '$'.number_format(app(ItemPriceService::class)->priceFor($record, 'USD'), 2)
                                 : '—'),
                         Textarea::make('details')
+                            ->label(__('admin.ui.item_form.details'))
                             ->rows(3)
                             ->columnSpanFull(),
                         FileUpload::make('item_image')
-                            ->label('Item image')
+                            ->label(__('admin.ui.item_form.image'))
                             ->image()
                             ->imageEditor()
                             ->downloadable()
@@ -121,21 +123,21 @@ class ItemForm
                                     $component->state($media->getPathRelativeToRoot());
                                 }
                             })
-                            ->helperText('Edit, replace, open, or download the current image here. New uploads automatically receive the Maik Cat watermark and mobile image sizes.')
+                            ->helperText(__('admin.ui.item_form.image_help'))
                             ->columnSpanFull(),
                         Repeater::make('extraCodes')
                             ->relationship()
-                            ->label('Extra codes')
+                            ->label(__('admin.ui.item_form.extra_codes'))
                             ->schema([
                                 TextInput::make('code')
-                                    ->label('Code')
+                                    ->label(__('admin.ui.item_form.code'))
                                     ->required()
                                     ->maxLength(100),
                             ])
                             ->defaultItems(0)
                             ->columns(1)
                             ->columnSpanFull()
-                            ->addActionLabel('Add extra code')
+                            ->addActionLabel(__('admin.ui.item_form.add_extra_code'))
                             ->reorderable(false)
                             ->collapsible(),
                     ]),

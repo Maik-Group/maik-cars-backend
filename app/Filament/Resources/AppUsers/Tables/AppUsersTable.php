@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AppUsers\Tables;
 
+use App\Enums\PreferredLanguage;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -29,53 +30,60 @@ class AppUsersTable
                     ->sortable()
                     ->copyable(),
                 IconColumn::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.app_users.active'))
                     ->boolean(),
                 TextColumn::make('preferred_language')
-                    ->label('Language')
+                    ->label(__('admin.ui.app_users.language'))
                     ->badge(),
                 IconColumn::make('unlimited_devices')
-                    ->label('Unlimited devices')
+                    ->label(__('admin.ui.app_users.unlimited_devices'))
                     ->boolean(),
+                TextColumn::make('discount_margin_percent')
+                    ->label(__('admin.ui.app_users.discount_margin'))
+                    ->formatStateUsing(static fn (mixed $state): string => number_format((float) $state, 1).'%')
+                    ->sortable(),
                 TextColumn::make('device_status')
-                    ->label('Authorized device')
+                    ->label(__('admin.ui.app_users.authorized_device'))
                     ->getStateUsing(fn (User $record): string => match (true) {
-                        $record->hasAuthorizedDeviceId() => 'Device ID',
-                        $record->hasAuthorizedDevice() => 'FCM fallback',
-                        default => 'Not bound',
+                        $record->hasAuthorizedDeviceId() => __('admin.ui.app_users.device_id'),
+                        $record->hasAuthorizedDevice() => __('admin.ui.app_users.fcm_fallback'),
+                        default => __('admin.ui.app_users.not_bound'),
                     })
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Device ID' => 'success',
-                        'FCM fallback' => 'warning',
+                    ->color(fn (User $record): string => match (true) {
+                        $record->hasAuthorizedDeviceId() => 'success',
+                        $record->hasAuthorizedDevice() => 'warning',
                         default => 'gray',
                     }),
                 TextColumn::make('device_bound_at')
-                    ->label('Bound since')
+                    ->label(__('admin.ui.app_users.bound_since'))
                     ->dateTime('Y-m-d H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('created_at')
-                    ->label('Created')
+                    ->label(__('admin.ui.app_users.created'))
                     ->since()
                     ->sortable(),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.app_users.active'))
                     ->boolean(),
                 SelectFilter::make('preferred_language')
-                    ->label('Language')
+                    ->label(__('admin.ui.app_users.language'))
                     ->options([
-                        'en' => 'English',
-                        'ar' => 'Arabic',
-                        'hu' => 'Hungarian',
+                        PreferredLanguage::EN->value => 'English',
+                        PreferredLanguage::AR->value => 'العربية',
+                        PreferredLanguage::BG->value => 'Български',
+                        PreferredLanguage::DE->value => 'Deutsch',
+                        PreferredLanguage::HR->value => 'Hrvatski',
+                        PreferredLanguage::HU->value => 'Hungarian (legacy)',
                     ]),
                 TernaryFilter::make('unlimited_devices')
-                    ->label('Unlimited devices')
+                    ->label(__('admin.ui.app_users.unlimited_devices'))
                     ->boolean(),
                 TernaryFilter::make('authorized_device')
-                    ->label('Authorized device')
+                    ->label(__('admin.ui.app_users.authorized_device'))
                     ->queries(
                         true: fn ($query) => $query->where(function ($query): void {
                             $query->whereNotNull('authorized_device_id')
@@ -89,24 +97,24 @@ class AppUsersTable
             ])
             ->recordActions([
                 Action::make('resetAuthorizedDevice')
-                    ->label('Reset authorized device')
+                    ->label(__('admin.ui.app_users.reset_device'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->visible(fn (User $record): bool => $record->hasAuthorizedDevice())
                     ->disabled(fn (User $record): bool => $record->unlimited_devices)
                     ->tooltip(fn (User $record): ?string => $record->unlimited_devices
-                        ? 'Device restrictions are disabled for unlimited-device accounts.'
+                        ? __('admin.ui.app_users.unlimited_tooltip')
                         : null)
                     ->requiresConfirmation()
-                    ->modalHeading('Reset authorized mobile device?')
-                    ->modalDescription('This revokes all current mobile sessions, clears the old notification token, and allows the next successful login to claim this account from a new app installation.')
-                    ->modalSubmitActionLabel('Reset device')
+                    ->modalHeading(__('admin.ui.app_users.reset_device_heading'))
+                    ->modalDescription(__('admin.ui.app_users.reset_device_description'))
+                    ->modalSubmitActionLabel(__('admin.ui.app_users.reset_device_submit'))
                     ->action(function (User $record): void {
                         $record->resetAuthorizedDevice();
 
                         Notification::make()
-                            ->title('Authorized device reset')
-                            ->body('All mobile sessions were revoked. The next successful login will bind the account to the new installation.')
+                            ->title(__('admin.ui.app_users.reset_device_done'))
+                            ->body(__('admin.ui.app_users.reset_device_done_body'))
                             ->success()
                             ->send();
                     }),

@@ -12,7 +12,7 @@ class ListUsers extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Control dashboard staff access, permissions, and active status.';
+        return __('admin.ui.subheadings.admins');
     }
 
     protected function getHeaderActions(): array

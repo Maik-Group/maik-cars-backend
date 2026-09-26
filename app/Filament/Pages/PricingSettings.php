@@ -23,21 +23,50 @@ class PricingSettings extends Page implements HasSchemas
     use InteractsWithSchemas;
 
     protected static ?string $title = 'Pricing Settings';
+
     protected static ?string $navigationLabel = 'Pricing Settings';
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.pricing_settings');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.settings');
+    }
+
+    public function getTitle(): string
+    {
+        return __('admin.nav.pricing_settings');
+    }
+
     protected static ?int $navigationSort = 10;
+
     protected static string $routePath = 'pricing-settings';
+
     protected string $view = 'filament.pages.pricing-settings';
 
     public ?array $data = [];
+
     public float $savedRatePercent = ItemPriceSettingsService::DEFAULT_RATE_PERCENT;
+
     public bool $savedMetalDeductionsEnabled = ItemPriceSettingsService::DEFAULT_METAL_DEDUCTIONS_ENABLED;
+
     public float $savedPlatinumDeductionPercent = ItemPriceSettingsService::DEFAULT_PLATINUM_DEDUCTION_PERCENT;
+
     public float $savedPalladiumDeductionPercent = ItemPriceSettingsService::DEFAULT_PALLADIUM_DEDUCTION_PERCENT;
+
     public float $savedRhodiumDeductionPercent = ItemPriceSettingsService::DEFAULT_RHODIUM_DEDUCTION_PERCENT;
+
     public string $savedFilterCorrectionMode = ItemPriceSettingsService::DEFAULT_FILTER_CORRECTION_MODE;
+
     public float $savedFilterCandidatePriceThreshold = ItemPriceSettingsService::DEFAULT_FILTER_CANDIDATE_PRICE_THRESHOLD;
+
     public float $savedFilterCandidateWeightThresholdKg = ItemPriceSettingsService::DEFAULT_FILTER_CANDIDATE_WEIGHT_THRESHOLD_KG;
 
     public function mount(): void
@@ -54,41 +83,41 @@ class PricingSettings extends Page implements HasSchemas
 
     public function getSubheading(): ?string
     {
-        return 'Test pricing behaviors safely. Stored item weights and assays are never modified by these settings.';
+        return __('admin.ui.subheadings.pricing');
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('How pricing works')
-                ->description('These settings control the price shown to customers. They do not change the stored item weight or metal values.')
+            Section::make(__('admin.ui.pricing.how'))
+                ->description(__('admin.ui.pricing.how_description'))
                 ->components([
                     Placeholder::make('pricing_formula_overview')
                         ->label('')
                         ->content($this->pricingStepsCard()),
                 ]),
-            Section::make('General item price rate')
-                ->description('Choose what percentage of the calculated metal value becomes the final customer price.')
+            Section::make(__('admin.ui.pricing.general_rate'))
+                ->description(__('admin.ui.pricing.general_rate_description'))
                 ->components([
-                    $this->percentInput('rate_percent', 'Price rate', 'Default: 80%.')
+                    $this->percentInput('rate_percent', __('admin.ui.pricing.price_rate'), __('admin.ui.pricing.default_80'))
                         ->live(),
                     Placeholder::make('general_rate_formula')
                         ->label('')
                         ->content(fn (): HtmlString => $this->generalRateCard()),
                 ]),
-            Section::make('Metal deductions')
-                ->description('Use this only when you want to reduce the value of each metal separately before applying the general price rate.')
+            Section::make(__('admin.ui.pricing.metal_deductions'))
+                ->description(__('admin.ui.pricing.metal_deductions_description'))
                 ->components([
                     Toggle::make('metal_deductions_enabled')
-                        ->label('Apply metal-specific deductions')
+                        ->label(__('admin.ui.pricing.apply_metal_deductions'))
                         ->live(),
-                    $this->percentInput('platinum_deduction_percent', 'Platinum deduction', 'Default: 2%.')
+                    $this->percentInput('platinum_deduction_percent', __('admin.ui.pricing.platinum_deduction'), '2%')
                         ->disabled(fn (): bool => ! (bool) ($this->data['metal_deductions_enabled'] ?? false))
                         ->dehydrated(),
-                    $this->percentInput('palladium_deduction_percent', 'Palladium deduction', 'Default: 2%.')
+                    $this->percentInput('palladium_deduction_percent', __('admin.ui.pricing.palladium_deduction'), '2%')
                         ->disabled(fn (): bool => ! (bool) ($this->data['metal_deductions_enabled'] ?? false))
                         ->dehydrated(),
-                    $this->percentInput('rhodium_deduction_percent', 'Rhodium deduction', 'Default: 10%.')
+                    $this->percentInput('rhodium_deduction_percent', __('admin.ui.pricing.rhodium_deduction'), '10%')
                         ->disabled(fn (): bool => ! (bool) ($this->data['metal_deductions_enabled'] ?? false))
                         ->dehydrated(),
                     Placeholder::make('metal_deduction_formula')
@@ -97,38 +126,38 @@ class PricingSettings extends Page implements HasSchemas
                         ->columnSpanFull(),
                 ])
                 ->columns(3),
-            Section::make('Filter price correction')
-                ->description('Choose how an approved filter or DPF part should be removed from the item before the customer price is calculated. The original stored item data is never changed.')
+            Section::make(__('admin.ui.pricing.filter_correction'))
+                ->description(__('admin.ui.pricing.filter_description'))
                 ->components([
                     Placeholder::make('filter_mode_explanation')
                         ->label('')
                         ->content(fn (): HtmlString => $this->filterModeCards())
                         ->columnSpanFull(),
                     Select::make('filter_correction_mode')
-                        ->label('Correction mode')
+                        ->label(__('admin.ui.pricing.correction_mode'))
                         ->options([
-                            FilterPriceCorrectionService::MODE_DISABLED => 'Disabled (original assay)',
-                            FilterPriceCorrectionService::MODE_WEIGHT_ONLY => 'Weight only',
-                            FilterPriceCorrectionService::MODE_WEIGHT_AND_METALS => 'Weight + metals',
+                            FilterPriceCorrectionService::MODE_DISABLED => __('admin.ui.pricing.disabled'),
+                            FilterPriceCorrectionService::MODE_WEIGHT_ONLY => __('admin.ui.pricing.weight_only'),
+                            FilterPriceCorrectionService::MODE_WEIGHT_AND_METALS => __('admin.ui.pricing.weight_metals'),
                         ])
                         ->required()
                         ->live(),
                     TextInput::make('filter_candidate_price_threshold')
-                        ->label('Candidate price threshold')
+                        ->label(__('admin.ui.pricing.candidate_price'))
                         ->numeric()
                         ->minValue(0)
                         ->step(0.01)
                         ->prefix('$')
                         ->required()
-                        ->helperText('Review signal only. Never changes a price automatically.'),
+                        ->helperText(__('admin.ui.pricing.review_signal_price')),
                     TextInput::make('filter_candidate_weight_threshold_kg')
-                        ->label('Candidate weight threshold')
+                        ->label(__('admin.ui.pricing.candidate_weight'))
                         ->numeric()
                         ->minValue(0)
                         ->step(0.001)
                         ->suffix('kg')
                         ->required()
-                        ->helperText('Review signal only. Default: 1.5 kg.'),
+                        ->helperText(__('admin.ui.pricing.review_signal_weight')),
                     Placeholder::make('filter_formula')
                         ->label('')
                         ->content(fn (): HtmlString => $this->filterFormulaCard())
@@ -137,8 +166,8 @@ class PricingSettings extends Page implements HasSchemas
                         ->label('')
                         ->content(new HtmlString(
                             '<div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 text-sm dark:border-white/10 dark:bg-white/5">'
-                            .'<div class="font-semibold text-gray-950 dark:text-white">Review thresholds</div>'
-                            .'<div class="mt-1 text-gray-600 dark:text-gray-400">Price and weight thresholds only flag items that may need review. They never change a price automatically.</div>'
+                            .'<div class="font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.review_thresholds').'</div>'
+                            .'<div class="mt-1 text-gray-600 dark:text-gray-400">'.__('admin.ui.pricing.review_thresholds_text').'</div>'
                             .'</div>'
                         ))
                         ->columnSpanFull(),
@@ -165,8 +194,8 @@ class PricingSettings extends Page implements HasSchemas
         $this->form->fill($settings);
 
         Notification::make()
-            ->title('Pricing settings updated')
-            ->body('Pricing modes were updated. No stored item assay data was changed.')
+            ->title(__('admin.ui.pricing.saved'))
+            ->body(__('admin.ui.pricing.saved_body'))
             ->success()
             ->send();
     }
@@ -241,24 +270,24 @@ class PricingSettings extends Page implements HasSchemas
         return new HtmlString(
             '<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">'
             .'<div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Step 1</div>'
-            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">Calculate metal value</div>'
-            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">Weight × PT, PD, RH values × current market prices.</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">'.__('admin.ui.pricing.step_1').'</div>'
+            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.step_1_title').'</div>'
+            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">'.__('admin.ui.pricing.step_1_text').'</div>'
             .'</div>'
             .'<div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Step 2</div>'
-            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">Apply metal deductions</div>'
-            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">Only when enabled. Each metal can have its own deduction.</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">'.__('admin.ui.pricing.step_2').'</div>'
+            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.step_2_title').'</div>'
+            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">'.__('admin.ui.pricing.step_2_text').'</div>'
             .'</div>'
             .'<div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Step 3</div>'
-            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">Apply filter correction</div>'
-            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">Only for approved filter/DPF mappings and according to the selected mode.</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">'.__('admin.ui.pricing.step_3').'</div>'
+            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.step_3_title').'</div>'
+            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-400">'.__('admin.ui.pricing.step_3_text').'</div>'
             .'</div>'
             .'<div class="rounded-xl border border-primary-500/30 bg-primary-500/10 p-4">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">Step 4</div>'
-            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">Apply final price rate</div>'
-            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-300">The final percentage produces the customer-facing price.</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">'.__('admin.ui.pricing.step_4').'</div>'
+            .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.step_4_title').'</div>'
+            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.__('admin.ui.pricing.step_4_text').'</div>'
             .'</div>'
             .'</div>'
         );
@@ -270,9 +299,9 @@ class PricingSettings extends Page implements HasSchemas
 
         return new HtmlString(
             '<div class="rounded-xl border border-primary-500/30 bg-primary-500/10 p-4">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">Current formula</div>'
-            .'<div class="mt-2 text-base font-semibold text-gray-950 dark:text-white">Final price = calculated metal value × '.$rate.'%</div>'
-            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-300">Change the rate above and this formula updates instantly.</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">'.__('admin.ui.pricing.current_formula').'</div>'
+            .'<div class="mt-2 text-base font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.final_price_formula', ['rate' => $rate]).'</div>'
+            .'<div class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.__('admin.ui.pricing.formula_updates').'</div>'
             .'</div>'
         );
     }
@@ -288,19 +317,24 @@ class PricingSettings extends Page implements HasSchemas
         if (! $enabled) {
             return new HtmlString(
                 '<div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-white/10 dark:bg-white/5">'
-                .'<div class="flex items-center gap-2"><span class="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-gray-300">OFF</span>'
-                .'<span class="font-semibold text-gray-950 dark:text-white">Metal deductions are not used</span></div>'
-                .'<div class="mt-2 text-sm text-gray-600 dark:text-gray-400">Final price = (PT value + PD value + RH value) × '.$rate.'%.</div>'
+                .'<div class="flex items-center gap-2"><span class="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-gray-300">'.__('admin.ui.pricing.off').'</span>'
+                .'<span class="font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.deductions_off_title').'</span></div>'
+                .'<div class="mt-2 text-sm text-gray-600 dark:text-gray-400">'.__('admin.ui.pricing.deductions_off_formula', ['rate' => $rate]).'</div>'
                 .'</div>'
             );
         }
 
         return new HtmlString(
             '<div class="rounded-xl border border-success-500/30 bg-success-500/10 p-4">'
-            .'<div class="flex items-center gap-2"><span class="rounded-full bg-success-500/15 px-2 py-0.5 text-xs font-semibold text-success-700 dark:text-success-400">ON</span>'
-            .'<span class="font-semibold text-gray-950 dark:text-white">Metal deductions are applied before the price rate</span></div>'
+            .'<div class="flex items-center gap-2"><span class="rounded-full bg-success-500/15 px-2 py-0.5 text-xs font-semibold text-success-700 dark:text-success-400">'.__('admin.ui.pricing.on').'</span>'
+            .'<span class="font-semibold text-gray-950 dark:text-white">'.__('admin.ui.pricing.deductions_on_title').'</span></div>'
             .'<div class="mt-2 text-sm text-gray-700 dark:text-gray-300">PT '.$pt.'% · PD '.$pd.'% · RH '.$rh.'%</div>'
-            .'<div class="mt-2 rounded-lg bg-white/60 p-3 text-sm text-gray-700 dark:bg-black/10 dark:text-gray-300">Final price = [PT × (100% − '.$pt.'%) + PD × (100% − '.$pd.'%) + RH × (100% − '.$rh.'%)] × '.$rate.'%.</div>'
+            .'<div class="mt-2 rounded-lg bg-white/60 p-3 text-sm text-gray-700 dark:bg-black/10 dark:text-gray-300">'.__('admin.ui.pricing.deductions_on_formula', [
+                'pt' => $pt,
+                'pd' => $pd,
+                'rh' => $rh,
+                'rate' => $rate,
+            ]).'</div>'
             .'</div>'
         );
     }
@@ -311,16 +345,16 @@ class PricingSettings extends Page implements HasSchemas
 
         $cards = [
             FilterPriceCorrectionService::MODE_DISABLED => [
-                'title' => 'Disabled',
-                'text' => 'Use the stored weight and PT / PD / RH values exactly as they are.',
+                'title' => __('admin.ui.pricing.mode_disabled_title'),
+                'text' => __('admin.ui.pricing.mode_disabled_text'),
             ],
             FilterPriceCorrectionService::MODE_WEIGHT_ONLY => [
-                'title' => 'Weight only',
-                'text' => 'Subtract approved filter/DPF weight. Keep PT / PD / RH values unchanged.',
+                'title' => __('admin.ui.pricing.mode_weight_title'),
+                'text' => __('admin.ui.pricing.mode_weight_text'),
             ],
             FilterPriceCorrectionService::MODE_WEIGHT_AND_METALS => [
-                'title' => 'Weight + metals',
-                'text' => 'Subtract filter/DPF weight and its metal contribution. Falls back to Weight only when metal data is not reliable.',
+                'title' => __('admin.ui.pricing.mode_weight_metals_title'),
+                'text' => __('admin.ui.pricing.mode_weight_metals_text'),
             ],
         ];
 
@@ -332,7 +366,7 @@ class PricingSettings extends Page implements HasSchemas
                 ? 'border-primary-500/40 bg-primary-500/10'
                 : 'border-gray-200 bg-gray-50/70 dark:border-white/10 dark:bg-white/5';
             $badge = $selected
-                ? '<span class="rounded-full bg-primary-500/15 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:text-primary-400">Selected</span>'
+                ? '<span class="rounded-full bg-primary-500/15 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:text-primary-400">'.__('admin.ui.pricing.selected').'</span>'
                 : '';
 
             $html .= '<div class="rounded-xl border p-4 '.$classes.'">'
@@ -350,22 +384,22 @@ class PricingSettings extends Page implements HasSchemas
 
         [$title, $formula] = match ($mode) {
             FilterPriceCorrectionService::MODE_WEIGHT_ONLY => [
-                'Weight only formula',
-                'Effective weight = stored item weight − approved filter weight. PT, PD, and RH stay unchanged.',
+                __('admin.ui.pricing.weight_only_formula_title'),
+                __('admin.ui.pricing.weight_only_formula_text'),
             ],
             FilterPriceCorrectionService::MODE_WEIGHT_AND_METALS => [
-                'Weight + metals formula',
-                'Effective weight = stored item weight − approved filter weight. Filter metal contribution is also removed before pricing.',
+                __('admin.ui.pricing.weight_metals_formula_title'),
+                __('admin.ui.pricing.weight_metals_formula_text'),
             ],
             default => [
-                'Original item formula',
-                'Stored item weight and PT, PD, RH values are used without filter correction.',
+                __('admin.ui.pricing.original_formula_title'),
+                __('admin.ui.pricing.original_formula_text'),
             ],
         };
 
         return new HtmlString(
             '<div class="rounded-xl border border-primary-500/30 bg-primary-500/10 p-4">'
-            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">Selected calculation</div>'
+            .'<div class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">'.__('admin.ui.pricing.selected_calculation').'</div>'
             .'<div class="mt-1 font-semibold text-gray-950 dark:text-white">'.$title.'</div>'
             .'<div class="mt-2 text-sm text-gray-600 dark:text-gray-300">'.$formula.'</div>'
             .'</div>'

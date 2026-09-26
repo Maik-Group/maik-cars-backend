@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'fcm_token', 'is_active', 'preferred_language', 'unlimited_devices'])]
+#[Fillable(['name', 'email', 'password', 'fcm_token', 'is_active', 'preferred_language', 'unlimited_devices', 'discount_margin_percent'])]
 #[Hidden(['password', 'remember_token', 'authorized_device_token', 'authorized_device_id'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -55,6 +55,7 @@ class User extends Authenticatable implements FilamentUser
             'is_active' => 'boolean',
             'device_bound_at' => 'datetime',
             'unlimited_devices' => 'boolean',
+            'discount_margin_percent' => 'float',
         ];
     }
 
@@ -166,6 +167,18 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return $this->hasAnyRole(['super_admin', 'admin', 'content_manager']);
+    }
+
+    public function discountMarginPercent(): float
+    {
+        return min(max((float) $this->discount_margin_percent, -100.0), 4.0);
+    }
+
+    public function applyDiscountMargin(float $price): float
+    {
+        $factor = 1 + ($this->discountMarginPercent() / 100);
+
+        return round(max($price * $factor, 0.0), 2);
     }
 
     public function preferredLanguageOrDefault(): string

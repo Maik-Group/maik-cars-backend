@@ -6,6 +6,9 @@ enum PreferredLanguage: string
 {
     case EN = 'en';
     case AR = 'ar';
+    case BG = 'bg';
+    case DE = 'de';
+    case HR = 'hr';
     case HU = 'hu';
 
     /**

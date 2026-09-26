@@ -25,6 +25,26 @@ class ItemResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Catalog Management';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.items');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.catalog_management');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.item');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.items');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return ItemForm::configure($schema);

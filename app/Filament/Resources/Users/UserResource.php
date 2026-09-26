@@ -29,6 +29,26 @@ class UserResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Access Management';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.admins');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.access_management');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.admin');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.admins');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return UserForm::configure($schema);

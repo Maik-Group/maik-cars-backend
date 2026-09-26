@@ -25,6 +25,12 @@ class AdminNotificationCampaignService
      *     body_en: string,
      *     title_ar?: string|null,
      *     body_ar?: string|null,
+     *     title_bg?: string|null,
+     *     body_bg?: string|null,
+     *     title_de?: string|null,
+     *     body_de?: string|null,
+     *     title_hr?: string|null,
+     *     body_hr?: string|null,
      *     title_hu?: string|null,
      *     body_hu?: string|null
      * } $data
@@ -47,6 +53,12 @@ class AdminNotificationCampaignService
             'body_en' => $data['body_en'],
             'title_ar' => $this->normalizeNullableString($data['title_ar'] ?? null),
             'body_ar' => $this->normalizeNullableString($data['body_ar'] ?? null),
+            'title_bg' => $this->normalizeNullableString($data['title_bg'] ?? null),
+            'body_bg' => $this->normalizeNullableString($data['body_bg'] ?? null),
+            'title_de' => $this->normalizeNullableString($data['title_de'] ?? null),
+            'body_de' => $this->normalizeNullableString($data['body_de'] ?? null),
+            'title_hr' => $this->normalizeNullableString($data['title_hr'] ?? null),
+            'body_hr' => $this->normalizeNullableString($data['body_hr'] ?? null),
             'title_hu' => $this->normalizeNullableString($data['title_hu'] ?? null),
             'body_hu' => $this->normalizeNullableString($data['body_hu'] ?? null),
             'payload' => [],
@@ -183,21 +195,20 @@ class AdminNotificationCampaignService
         $titleEn = trim((string) ($data['title_en'] ?? ''));
         $bodyEn = trim((string) ($data['body_en'] ?? ''));
 
-        if ($preferredLanguage === PreferredLanguage::AR->value) {
-            $title = $this->normalizeNullableString($data['title_ar'] ?? null);
-            $body = $this->normalizeNullableString($data['body_ar'] ?? null);
+        $localizedLanguages = [
+            PreferredLanguage::AR->value,
+            PreferredLanguage::BG->value,
+            PreferredLanguage::DE->value,
+            PreferredLanguage::HR->value,
+            PreferredLanguage::HU->value,
+        ];
+
+        if (in_array($preferredLanguage, $localizedLanguages, true)) {
+            $title = $this->normalizeNullableString($data["title_{$preferredLanguage}"] ?? null);
+            $body = $this->normalizeNullableString($data["body_{$preferredLanguage}"] ?? null);
 
             if ($title !== null && $body !== null) {
-                return [$title, $body, PreferredLanguage::AR->value];
-            }
-        }
-
-        if ($preferredLanguage === PreferredLanguage::HU->value) {
-            $title = $this->normalizeNullableString($data['title_hu'] ?? null);
-            $body = $this->normalizeNullableString($data['body_hu'] ?? null);
-
-            if ($title !== null && $body !== null) {
-                return [$title, $body, PreferredLanguage::HU->value];
+                return [$title, $body, $preferredLanguage];
             }
         }
 

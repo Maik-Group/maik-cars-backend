@@ -456,6 +456,29 @@ test('calculator endpoint returns estimate breakdown and total', function () {
     expect((float) $response->json('estimate.totalUsd'))->toBe($expected);
 });
 
+test('calculator endpoint falls back to live spot prices when no snapshot exists', function () {
+    mockItemMetalsSpotServiceAscii(ptPricePerGram: 10, pdPricePerGram: 20, rhPricePerGram: 30);
+
+    expect(MetalPrice::query()->count())->toBe(0);
+
+    $response = postJson('/api/calculator/estimate', [
+        'weight' => 2,
+        'weightUnit' => 'kg',
+        'ptPpm' => 1000,
+        'pdPpm' => 500,
+        'rhPpm' => 250,
+        'ptRate' => 100,
+        'pdRate' => 100,
+        'rhRate' => 100,
+        'humidityRate' => 5,
+        'currency' => 'USD',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('estimate.inputs.weightUnit', 'kg');
+    $response->assertJsonPath('estimate.totalUsd', 52.25);
+});
+
 test('calculator endpoint accepts full calculator page fields', function () {
     MetalPrice::factory()->create([
         'pt_usd_per_oz' => 1500,

@@ -29,59 +29,72 @@ class ItemFilterMappingsTable
         return $table
             ->columns([
                 TextColumn::make('item.carGroup.name')
-                    ->label('Group')
+                    ->label(__('admin.ui.pricing_review.group'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('item.serial_code')
-                    ->label('Serial')
+                    ->label(__('admin.ui.pricing_review.serial'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('issue')
-                    ->label('Why review is needed')
+                    ->label(__('admin.ui.pricing_review.why_review'))
                     ->getStateUsing(fn (ItemFilterMapping $record): string => app(PricingReviewService::class)->issue($record)['label'])
                     ->badge()
                     ->color(fn (ItemFilterMapping $record): string => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW ? 'warning' : 'gray')
                     ->wrap(),
                 TextColumn::make('item.weight_kg')
-                    ->label('Product weight')
+                    ->label(__('admin.ui.pricing_review.product_weight'))
                     ->formatStateUsing(fn ($state): string => number_format((float) $state, 3).' kg'),
                 TextColumn::make('filter_serial')
-                    ->label('Filter reference')
+                    ->label(__('admin.ui.pricing_review.filter_reference'))
                     ->searchable()
-                    ->placeholder('Filter reference not linked'),
+                    ->placeholder(__('admin.ui.pricing_review.filter_reference_missing')),
                 TextColumn::make('filter_weight')
-                    ->label('Filter weight')
+                    ->label(__('admin.ui.pricing_review.filter_weight'))
                     ->getStateUsing(fn (ItemFilterMapping $record): ?string => self::formattedWeight(self::filterWeight($record))),
                 TextColumn::make('net_weight')
-                    ->label('Corrected weight')
+                    ->label(__('admin.ui.pricing_review.corrected_weight'))
                     ->getStateUsing(fn (ItemFilterMapping $record): ?string => self::formattedWeight(self::netWeight($record))),
                 TextColumn::make('correction_status')
-                    ->label('Review status')
+                    ->label(__('admin.ui.pricing_review.review_status'))
                     ->getStateUsing(fn (ItemFilterMapping $record): string => self::correctionStatus($record))
                     ->badge(),
                 TextColumn::make('current_price')
-                    ->label('Current price')
+                    ->label(__('admin.ui.pricing_review.current_price'))
                     ->getStateUsing(fn (ItemFilterMapping $record): float => self::price($record, FilterPriceCorrectionService::MODE_DISABLED))
                     ->money('USD'),
                 TextColumn::make('weight_only_price')
-                    ->label('Price after correction')
+                    ->label(__('admin.ui.pricing_review.price_after_correction'))
                     ->getStateUsing(fn (ItemFilterMapping $record): float => self::price($record, FilterPriceCorrectionService::MODE_WEIGHT_ONLY))
                     ->money('USD'),
                 TextColumn::make('api_status')
-                    ->label('Customer visibility')
-                    ->getStateUsing(fn (ItemFilterMapping $record): string => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW ? 'Hidden until reviewed' : 'Visible to customers')
+                    ->label(__('admin.ui.pricing_review.customer_visibility'))
+                    ->getStateUsing(fn (ItemFilterMapping $record): string => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW
+                        ? __('admin.ui.pricing_review.hidden_until_reviewed')
+                        : __('admin.ui.pricing_review.visible_to_customers'))
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Hidden until reviewed' ? 'danger' : 'success'),
-                TextColumn::make('confidence')->badge()->sortable(),
+                    ->color(fn (ItemFilterMapping $record): string => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW ? 'danger' : 'success'),
+                TextColumn::make('confidence')
+                    ->label(__('admin.ui.pricing_review.confidence'))
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'high' => __('admin.ui.pricing_review.high'),
+                        'medium' => __('admin.ui.pricing_review.medium'),
+                        'low' => __('admin.ui.pricing_review.low'),
+                        'manual' => __('admin.ui.pricing_review.manual'),
+                        default => $state,
+                    })
+                    ->badge()
+                    ->sortable(),
                 TextColumn::make('status')
+                    ->label(__('admin.ui.pricing_review.status'))
                     ->badge()
                     ->sortable()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        ItemFilterMapping::STATUS_NEEDS_REVIEW => 'Awaiting review',
-                        ItemFilterMapping::STATUS_APPROVED => 'Approved',
-                        ItemFilterMapping::STATUS_IGNORED => 'Reviewed — current pricing kept',
-                        ItemFilterMapping::STATUS_DETECTED => 'Detected',
+                        ItemFilterMapping::STATUS_NEEDS_REVIEW => __('admin.ui.pricing_review.awaiting_review'),
+                        ItemFilterMapping::STATUS_APPROVED => __('admin.ui.pricing_review.approved'),
+                        ItemFilterMapping::STATUS_IGNORED => __('admin.ui.pricing_review.kept_current'),
+                        ItemFilterMapping::STATUS_DETECTED => __('admin.ui.pricing_review.detected'),
                         default => $state,
                     })
                     ->color(fn (ItemFilterMapping $record): string => match ($record->status) {
@@ -91,32 +104,34 @@ class ItemFilterMappingsTable
                         default => 'info',
                     }),
                 TextColumn::make('item.source_url')
-                    ->label('Source')
-                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Open' : '-')
+                    ->label(__('admin.ui.pricing_review.source'))
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? __('admin.ui.pricing_review.open') : '-')
                     ->url(fn (ItemFilterMapping $record): ?string => $record->item?->source_url)
                     ->openUrlInNewTab(),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Review status')
+                    ->label(__('admin.ui.pricing_review.review_status'))
                     ->default(ItemFilterMapping::STATUS_NEEDS_REVIEW)
                     ->options([
-                        ItemFilterMapping::STATUS_NEEDS_REVIEW => 'Awaiting review — hidden from customers until approved',
-                        ItemFilterMapping::STATUS_APPROVED => 'Approved',
-                        ItemFilterMapping::STATUS_IGNORED => 'Reviewed — current pricing kept',
-                        ItemFilterMapping::STATUS_DETECTED => 'Detected',
+                        ItemFilterMapping::STATUS_NEEDS_REVIEW => __('admin.ui.pricing_review.awaiting_hidden_filter'),
+                        ItemFilterMapping::STATUS_APPROVED => __('admin.ui.pricing_review.approved'),
+                        ItemFilterMapping::STATUS_IGNORED => __('admin.ui.pricing_review.kept_current'),
+                        ItemFilterMapping::STATUS_DETECTED => __('admin.ui.pricing_review.detected'),
                     ]),
-                SelectFilter::make('confidence')->options([
-                    'high' => 'High',
-                    'medium' => 'Medium',
-                    'low' => 'Low',
-                    'manual' => 'Manual',
-                ]),
+                SelectFilter::make('confidence')
+                    ->label(__('admin.ui.pricing_review.confidence'))
+                    ->options([
+                        'high' => __('admin.ui.pricing_review.high'),
+                        'medium' => __('admin.ui.pricing_review.medium'),
+                        'low' => __('admin.ui.pricing_review.low'),
+                        'manual' => __('admin.ui.pricing_review.manual'),
+                    ]),
             ])
             ->recordActions([
                 self::reviewWeightAction(),
                 Action::make('editItemData')
-                    ->label('Edit item data')
+                    ->label(__('admin.ui.pricing_review.edit_item_data'))
                     ->icon('heroicon-o-pencil-square')
                     ->color('info')
                     ->visible(fn (ItemFilterMapping $record): bool => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW && $record->item !== null && ItemResource::canEdit($record->item))
@@ -131,11 +146,11 @@ class ItemFilterMappingsTable
     private static function reviewWeightAction(): Action
     {
         return Action::make('reviewAndApplyWeight')
-            ->label('Review item')
+            ->label(__('admin.ui.pricing_review.review_item'))
             ->icon('heroicon-o-scale')
             ->color('warning')
-            ->modalHeading('Review linked pricing before approval')
-            ->modalSubmitActionLabel('Approve & apply to linked items')
+            ->modalHeading(__('admin.ui.pricing_review.review_heading'))
+            ->modalSubmitActionLabel(__('admin.ui.pricing_review.review_submit'))
             ->visible(function (ItemFilterMapping $record): bool {
                 if ($record->status !== ItemFilterMapping::STATUS_NEEDS_REVIEW) {
                     return false;
@@ -144,7 +159,7 @@ class ItemFilterMappingsTable
                 return app(PricingReviewService::class)->issue($record)['type'] === 'component_weight';
             })
             ->schema([
-                Section::make('Issue')
+                Section::make(__('admin.ui.pricing_review.issue'))
                     ->compact()
                     ->schema([
                         Text::make(function (ItemFilterMapping $record): string {
@@ -155,36 +170,36 @@ class ItemFilterMappingsTable
                         Text::make(fn (ItemFilterMapping $record): string => app(PricingReviewService::class)->issue($record)['instruction']),
                     ]),
                 TextInput::make('filter_weight_kg')
-                    ->label('Verified DPF / filter component weight')
+                    ->label(__('admin.ui.pricing_review.verified_weight'))
                     ->numeric()
                     ->minValue(0.001)
                     ->step(0.001)
                     ->suffix('kg')
                     ->required()
                     ->live(debounce: 350)
-                    ->helperText('Enter the measured component weight once. It will be previewed and, after approval, applied to every linked Needs Review item in the same group and serial family.'),
-                Section::make('Before / after preview')
-                    ->description('Nothing is saved until you approve the modal.')
+                    ->helperText(__('admin.ui.pricing_review.verified_weight_help')),
+                Section::make(__('admin.ui.pricing_review.before_after'))
+                    ->description(__('admin.ui.pricing_review.before_after_desc'))
                     ->schema([
                         Text::make(function (Get $get, ItemFilterMapping $record): HtmlString {
                             $weight = $get('filter_weight_kg');
 
                             if (! is_numeric($weight) || (float) $weight <= 0) {
-                                return new HtmlString('<strong>Enter a verified component weight to calculate the preview.</strong>');
+                                return new HtmlString('<strong>'.__('admin.ui.pricing_review.enter_weight_preview').'</strong>');
                             }
 
                             $preview = app(PricingReviewService::class)->previewFamilyWeight($record, (float) $weight);
                             $status = $preview['all_safe']
-                                ? '<span style="color:#15803d"><strong>Safe to apply to all linked items.</strong></span>'
-                                : '<span style="color:#b91c1c"><strong>Not safe to approve yet. At least one linked item failed the weight safety rules.</strong></span>';
+                                ? '<span style="color:#15803d"><strong>'.__('admin.ui.pricing_review.safe_all').'</strong></span>'
+                                : '<span style="color:#b91c1c"><strong>'.__('admin.ui.pricing_review.not_safe').'</strong></span>';
 
-                            return new HtmlString($status.'<br>Linked items: <strong>'.$preview['count'].'</strong>');
+                            return new HtmlString($status.'<br>'.__('admin.ui.pricing_review.linked_items', ['count' => '<strong>'.$preview['count'].'</strong>']));
                         }),
                         UnorderedList::make(function (Get $get, ItemFilterMapping $record): array {
                             $weight = $get('filter_weight_kg');
 
                             if (! is_numeric($weight) || (float) $weight <= 0) {
-                                return ['Preview will appear here after entering the verified component weight.'];
+                                return [__('admin.ui.pricing_review.preview_wait')];
                             }
 
                             $preview = app(PricingReviewService::class)->previewFamilyWeight($record, (float) $weight);
@@ -192,29 +207,32 @@ class ItemFilterMappingsTable
                             return collect($preview['rows'])
                                 ->map(function (array $row): string {
                                     $model = filled($row['model']) ? ' · '.$row['model'] : '';
-                                    $net = $row['net_weight_kg'] === null ? 'invalid' : number_format((float) $row['net_weight_kg'], 3).' kg';
+                                    $net = $row['net_weight_kg'] === null ? __('admin.ui.pricing_review.invalid') : number_format((float) $row['net_weight_kg'], 3).' kg';
                                     $delta = $row['delta_percent'] === null ? '' : sprintf(' (%+.2f%%)', (float) $row['delta_percent']);
-                                    $safety = $row['safe'] ? 'Safe' : 'Blocked: '.$row['reason'];
+                                    $safety = $row['safe']
+                                        ? __('admin.ui.pricing_review.safe')
+                                        : __('admin.ui.pricing_review.blocked', [
+                                            'reason' => self::reviewReasonLabel((string) $row['reason']),
+                                        ]);
 
-                                    return sprintf(
-                                        '%s%s — weight %.3f kg → %s — $%s → $%s%s — %s',
-                                        $row['serial'],
-                                        $model,
-                                        (float) $row['original_weight_kg'],
-                                        $net,
-                                        number_format((float) $row['current_price_usd'], 2),
-                                        number_format((float) $row['proposed_price_usd'], 2),
-                                        $delta,
-                                        $safety,
-                                    );
+                                    return __('admin.ui.pricing_review.row_summary', [
+                                        'serial' => $row['serial'],
+                                        'model' => $model,
+                                        'weight' => number_format((float) $row['original_weight_kg'], 3),
+                                        'net' => $net,
+                                        'current' => number_format((float) $row['current_price_usd'], 2),
+                                        'proposed' => number_format((float) $row['proposed_price_usd'], 2),
+                                        'delta' => $delta,
+                                        'safety' => $safety,
+                                    ]);
                                 })
                                 ->all();
                         })->columns(1),
                     ]),
                 Textarea::make('review_note')
-                    ->label('Review note')
+                    ->label(__('admin.ui.pricing_review.review_note'))
                     ->rows(3)
-                    ->placeholder('Optional: measurement source, scale reading, OEM/variant confirmation, etc.'),
+                    ->placeholder(__('admin.ui.pricing_review.review_note_placeholder')),
             ])
             ->action(function (array $data, ItemFilterMapping $record): void {
                 try {
@@ -226,7 +244,7 @@ class ItemFilterMappingsTable
                     );
                 } catch (RuntimeException $exception) {
                     Notification::make()
-                        ->title('Pricing review was not applied')
+                        ->title(__('admin.ui.pricing_review.not_applied'))
                         ->body($exception->getMessage())
                         ->danger()
                         ->send();
@@ -235,11 +253,8 @@ class ItemFilterMappingsTable
                 }
 
                 Notification::make()
-                    ->title('Pricing review approved')
-                    ->body(sprintf(
-                        'Applied the verified component weight to %d linked item(s). They can now be shown in the app.',
-                        $result['applied'],
-                    ))
+                    ->title(__('admin.ui.pricing_review.approved_title'))
+                    ->body(__('admin.ui.pricing_review.approved_body', ['count' => $result['applied']]))
                     ->success()
                     ->send();
             });
@@ -248,26 +263,26 @@ class ItemFilterMappingsTable
     private static function keepCurrentPricingAction(): Action
     {
         return Action::make('approveCurrentPricing')
-            ->label('Keep current price')
+            ->label(__('admin.ui.pricing_review.keep_current_price'))
             ->icon('heroicon-o-check-badge')
             ->color('gray')
-            ->modalHeading('Approve current pricing without a filter correction')
-            ->modalDescription('Use this only after verifying that no component-weight correction should be applied. The linked items can then be shown in the app with their existing pricing.')
-            ->modalSubmitActionLabel('Approve current pricing')
+            ->modalHeading(__('admin.ui.pricing_review.keep_heading'))
+            ->modalDescription(__('admin.ui.pricing_review.keep_desc'))
+            ->modalSubmitActionLabel(__('admin.ui.pricing_review.keep_submit'))
             ->visible(fn (ItemFilterMapping $record): bool => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW)
             ->schema([
                 Text::make(function (ItemFilterMapping $record): string {
                     $issue = app(PricingReviewService::class)->issue($record);
                     $count = app(PricingReviewService::class)->relatedReviewMappings($record)->count();
 
-                    return $issue['label'].' · '.$count.' linked Needs Review item(s)';
+                    return $issue['label'].' · '.__('admin.ui.pricing_review.linked_needs_review', ['count' => $count]);
                 })->weight('bold'),
                 Text::make(fn (ItemFilterMapping $record): string => app(PricingReviewService::class)->issue($record)['instruction']),
                 Textarea::make('review_note')
-                    ->label('Why is the current pricing safe to keep?')
+                    ->label(__('admin.ui.pricing_review.keep_note_label'))
                     ->required()
                     ->rows(4)
-                    ->helperText('This note is stored as audit evidence and applies to all linked review items.'),
+                    ->helperText(__('admin.ui.pricing_review.keep_note_help')),
             ])
             ->action(function (array $data, ItemFilterMapping $record): void {
                 try {
@@ -278,7 +293,7 @@ class ItemFilterMappingsTable
                     );
                 } catch (RuntimeException $exception) {
                     Notification::make()
-                        ->title('Review could not be completed')
+                        ->title(__('admin.ui.pricing_review.review_failed'))
                         ->body($exception->getMessage())
                         ->danger()
                         ->send();
@@ -287,8 +302,8 @@ class ItemFilterMappingsTable
                 }
 
                 Notification::make()
-                    ->title('Current pricing approved')
-                    ->body("Reviewed {$count} linked item(s). They can now be shown in the app.")
+                    ->title(__('admin.ui.pricing_review.current_approved'))
+                    ->body(__('admin.ui.pricing_review.current_approved_body', ['count' => $count]))
                     ->success()
                     ->send();
             });
@@ -297,12 +312,25 @@ class ItemFilterMappingsTable
     private static function correctionStatus(ItemFilterMapping $record): string
     {
         if ($record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW) {
-            return 'Awaiting review';
+            return __('admin.ui.pricing_review.awaiting_review');
         }
 
         $assay = self::weightOnlyAssay($record);
 
-        return ($assay['applied'] ?? false) ? 'Ready' : (string) ($assay['reason'] ?? 'No correction');
+        return ($assay['applied'] ?? false)
+            ? __('admin.ui.pricing_review.ready')
+            : self::reviewReasonLabel((string) ($assay['reason'] ?? ''));
+    }
+
+    private static function reviewReasonLabel(string $reason): string
+    {
+        return match ($reason) {
+            'missing_filter_weight' => __('admin.ui.pricing_review.reason_missing_filter_weight'),
+            'invalid_net_weight' => __('admin.ui.pricing_review.reason_invalid_net_weight'),
+            'implausible_net_weight' => __('admin.ui.pricing_review.reason_implausible_net_weight'),
+            '', 'disabled', 'no_approved_mapping' => __('admin.ui.pricing_review.no_correction'),
+            default => $reason,
+        };
     }
 
     /** @return array<string, mixed> */

@@ -12,7 +12,7 @@ class ListCarGroups extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Organize item categories used across search and browsing.';
+        return __('admin.ui.subheadings.car_groups');
     }
 
     protected function getHeaderActions(): array

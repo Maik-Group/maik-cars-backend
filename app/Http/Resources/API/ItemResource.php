@@ -14,9 +14,14 @@ class ItemResource extends JsonResource
     {
         $currency = strtoupper((string) $request->query('currency', 'USD'));
         $averagePrice = $this->resource->getAttribute('api_average_price');
-        $price = is_numeric($averagePrice)
+        $basePrice = is_numeric($averagePrice)
             ? (float) $averagePrice
             : app(ItemPriceService::class)->priceFor($this->resource, $currency);
+
+        $user = $request->user('sanctum');
+        $discountMarginPercent = $user?->discountMarginPercent() ?? 0.0;
+        $discountPercent = max(-$discountMarginPercent, 0.0);
+        $price = $user?->applyDiscountMargin($basePrice) ?? round($basePrice, 2);
 
         return [
             'id' => $this->id,
@@ -34,7 +39,10 @@ class ItemResource extends JsonResource
             'image_thumb_url' => $this->image_thumb_url,
             'image_detail_url' => $this->image_detail_url,
             'saved_item' => (bool) ($this->saved_item ?? false),
+            'base_price' => round($basePrice, 2),
             'price' => round($price, 2),
+            'discount_percent' => round($discountPercent, 1),
+            'price_adjustment_percent' => round($discountMarginPercent, 1),
         ];
     }
 }

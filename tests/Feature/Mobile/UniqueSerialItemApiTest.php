@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Item;
+use App\Models\ItemFilterMapping;
 use App\Services\Mobile\ItemApiSettingsService;
 use App\Services\Mobile\MetalsSpotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,7 +98,7 @@ test('unique serial response mode is disabled by default', function (): void {
     }
 });
 
-test('unique serial mode returns the arithmetic mean of individual prices without averaging assay fields', function (): void {
+test('unique serial mode averages only API-visible siblings without averaging assay fields', function (): void {
     app(ItemApiSettingsService::class)->updateUniqueSerialItems(true);
 
     $first = Item::factory()->create([
@@ -121,6 +122,11 @@ test('unique serial mode returns the arithmetic mean of individual prices withou
         'pd_ppm' => 30,
         'rh_ppm' => 3,
     ]);
+    ItemFilterMapping::factory()->create([
+        'item_id' => $hiddenThird->id,
+        'status' => ItemFilterMapping::STATUS_NEEDS_REVIEW,
+    ]);
+
     $other = Item::factory()->create([
         'serial_code' => 'ZZZ-20',
         'weight_kg' => 4.0,
@@ -131,7 +137,6 @@ test('unique serial mode returns the arithmetic mean of individual prices withou
 
     $paths = [
         uniqueSerialApiAttachImage($first),
-        uniqueSerialApiAttachImage($second),
         uniqueSerialApiAttachImage($other),
     ];
 
@@ -143,7 +148,7 @@ test('unique serial mode returns the arithmetic mean of individual prices withou
         $pageOne->assertJsonPath('meta.total', 2);
         $pageOne->assertJsonPath('meta.lastPage', 2);
         $pageOne->assertJsonPath('data.0.serialCode', 'GM10');
-        $pageOne->assertJsonPath('data.0.price', 10.5);
+        $pageOne->assertJsonPath('data.0.price', 2.46);
 
         expect((float) $pageOne->json('data.0.weightKg'))->toBeIn([1.0, 2.0])
             ->and((float) $pageOne->json('data.0.weightKg'))->not->toBe(4.0);
@@ -158,7 +163,7 @@ test('unique serial mode returns the arithmetic mean of individual prices withou
 
         $detail->assertOk();
         $detail->assertJsonPath('data.serialCode', 'GM10');
-        $detail->assertJsonPath('data.price', 10.5);
+        $detail->assertJsonPath('data.price', 2.46);
         $detail->assertJsonPath('data.weightKg', 1);
 
         expect((float) $first->fresh()->weight_kg)->toBe(1.0)

@@ -15,15 +15,16 @@ class CarGroupsTable
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label(__('admin.ui.car_groups.name'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('items_count')
-                    ->label('Item count')
+                    ->label(__('admin.ui.car_groups.item_count'))
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('updated_at')
-                    ->label('Updated')
+                    ->label(__('admin.ui.car_groups.updated'))
                     ->since()
                     ->sortable(),
             ])

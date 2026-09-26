@@ -23,6 +23,21 @@ class ApiSettings extends Page implements HasSchemas
 
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.app_item_display');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.settings');
+    }
+
+    public function getTitle(): string
+    {
+        return __('admin.nav.app_item_display');
+    }
+
     protected static ?int $navigationSort = 20;
 
     protected static string $routePath = 'api-settings';
@@ -45,19 +60,19 @@ class ApiSettings extends Page implements HasSchemas
 
     public function getSubheading(): ?string
     {
-        return 'Choose how product items are shown to customers in the app when several records share the same serial code. This changes only what customers see; the stored product data is not changed.';
+        return __('admin.ui.subheadings.app_display');
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Items shown to customers')
-                    ->description('Decide whether customers should see every stored item record or a single combined item for each repeated serial code. Product weights, metal values, and stored records remain unchanged.')
+                Section::make(__('admin.ui.app_display.section'))
+                    ->description(__('admin.ui.app_display.description'))
                     ->components([
                         Toggle::make('unique_serial_items')
-                            ->label('Show one item for each unique serial code')
-                            ->helperText('When enabled, items with the same serial code are shown to customers as one item instead of several duplicates. The displayed price is calculated from the valid prices of the matching records, while the original stored item data stays unchanged.')
+                            ->label(__('admin.ui.app_display.unique_label'))
+                            ->helperText(__('admin.ui.app_display.unique_help'))
                             ->default(ItemApiSettingsService::DEFAULT_UNIQUE_SERIAL_ITEMS),
                     ]),
             ])
@@ -76,10 +91,10 @@ class ApiSettings extends Page implements HasSchemas
         ]);
 
         Notification::make()
-            ->title('Customer item display updated')
+            ->title(__('admin.ui.app_display.updated'))
             ->body($enabled
-                ? 'Customers will now see one item for each unique serial code, with the displayed price based on the matching item records.'
-                : 'Customers will now see every available item record, including records that share the same serial code.')
+                ? __('admin.ui.app_display.enabled_body')
+                : __('admin.ui.app_display.disabled_body'))
             ->success()
             ->send();
     }

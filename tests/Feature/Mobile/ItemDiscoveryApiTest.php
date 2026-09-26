@@ -4,8 +4,11 @@ use App\Models\CarGroup;
 use App\Models\ExtraCode;
 use App\Models\Item;
 use App\Models\ItemFilterMapping;
+use App\Models\User;
+use App\Services\Mobile\ItemPriceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\getJson;
 
@@ -38,26 +41,33 @@ beforeEach(function (): void {
     Storage::fake('public');
 });
 
-test('car groups endpoint returns only categories containing API-visible items', function (): void {
-    $visibleGroup = CarGroup::factory()->create(['name' => 'BMW']);
-    $incompleteGroup = CarGroup::factory()->create(['name' => 'EMPTY ITEMS']);
+test('car groups endpoint includes API-visible items even when they have no image', function (): void {
+    $withImageGroup = CarGroup::factory()->create(['name' => 'BMW']);
+    $withoutImageGroup = CarGroup::factory()->create(['name' => 'OPEL']);
+    $invalidGroup = CarGroup::factory()->create(['name' => 'INVALID']);
     CarGroup::factory()->create(['name' => 'NO ITEMS']);
 
-    $visibleItem = Item::factory()->create([
-        'car_group_id' => $visibleGroup->id,
+    $withImage = Item::factory()->create([
+        'car_group_id' => $withImageGroup->id,
     ]);
-    itemDiscoveryApiAttachImage($visibleItem);
+    itemDiscoveryApiAttachImage($withImage);
 
     Item::factory()->create([
-        'car_group_id' => $incompleteGroup->id,
+        'car_group_id' => $withoutImageGroup->id,
+    ]);
+
+    Item::factory()->create([
+        'car_group_id' => $invalidGroup->id,
+        'weight_kg' => 0,
     ]);
 
     $response = getJson('/api/car_groups');
 
     $response->assertOk();
-    $response->assertJsonCount(1, 'data');
-    $response->assertJsonPath('data.0.id', $visibleGroup->id);
-    $response->assertJsonMissing(['id' => $incompleteGroup->id]);
+    $response->assertJsonCount(2, 'data');
+    $response->assertJsonFragment(['id' => $withImageGroup->id]);
+    $response->assertJsonFragment(['id' => $withoutImageGroup->id]);
+    $response->assertJsonMissing(['id' => $invalidGroup->id]);
 });
 
 test('item code suggestions return only matching codes from API-visible items', function (): void {
@@ -75,10 +85,22 @@ test('item code suggestions return only matching codes from API-visible items', 
         'code' => 'ALT-GM10',
     ]);
 
+    $withoutImage = Item::factory()->create([
+        'car_group_id' => $group->id,
+        'serial_code' => 'GM10-NOIMAGE',
+        'normalized_serial' => 'GM10NOIMAGE',
+    ]);
+
+    ExtraCode::factory()->create([
+        'item_id' => $withoutImage->id,
+        'code' => 'ALT-GM10-NOIMAGE',
+    ]);
+
     $hiddenItem = Item::factory()->create([
         'car_group_id' => $group->id,
         'serial_code' => 'GM10-HIDDEN',
         'normalized_serial' => 'GM10HIDDEN',
+        'weight_kg' => 0,
     ]);
 
     ExtraCode::factory()->create([
@@ -89,12 +111,12 @@ test('item code suggestions return only matching codes from API-visible items', 
     $response = getJson('/api/items/codes?search=GM10&limit=10');
 
     $response->assertOk();
-    $response->assertExactJson([
-        'data' => [
-            'GM10-ABC',
-            'ALT-GM10',
-        ],
-    ]);
+    $response->assertJsonFragment(['GM10-ABC']);
+    $response->assertJsonFragment(['ALT-GM10']);
+    $response->assertJsonFragment(['GM10-NOIMAGE']);
+    $response->assertJsonFragment(['ALT-GM10-NOIMAGE']);
+    $response->assertJsonMissing(['GM10-HIDDEN']);
+    $response->assertJsonMissing(['GM10-HIDDEN-ALT']);
 });
 
 test('needs review items are blocked from item discovery APIs until the review is resolved', function (): void {
@@ -144,4 +166,68 @@ test('needs review items are blocked from item discovery APIs until the review i
     $blockedMapping->update(['status' => ItemFilterMapping::STATUS_IGNORED]);
 
     getJson("/api/items/{$blocked->id}")->assertOk();
+});
+
+test('items without images remain visible and return nullable image fields', function (): void {
+    $group = CarGroup::factory()->create(['name' => 'NO IMAGE']);
+    $item = Item::factory()->create([
+        'car_group_id' => $group->id,
+        'serial_code' => 'NO-IMG-1',
+        'normalized_serial' => 'NOIMG1',
+    ]);
+
+    expect($item->isApiVisible())->toBeTrue()
+        ->and(Item::query()->apiVisible()->whereKey($item->id)->exists())->toBeTrue()
+        ->and(Item::query()
+            ->apiVisible()
+            ->whereDoesntHave('media', fn ($query) => $query->where('collection_name', 'images'))
+            ->whereKey($item->id)
+            ->exists())->toBeTrue();
+
+    $list = getJson('/api/items?text=NO-IMG-1');
+
+    $list->assertOk();
+    $list->assertJsonPath('meta.total', 1);
+    $list->assertJsonPath('data.0.id', $item->id);
+    $list->assertJsonPath('data.0.imageUrl', null);
+    $list->assertJsonPath('data.0.imageThumbUrl', null);
+    $list->assertJsonPath('data.0.imageDetailUrl', null);
+
+    $details = getJson("/api/items/{$item->id}");
+
+    $details->assertOk();
+    $details->assertJsonPath('data.id', $item->id);
+    $details->assertJsonPath('data.imageUrl', null);
+    $details->assertJsonPath('data.imageThumbUrl', null);
+    $details->assertJsonPath('data.imageDetailUrl', null);
+});
+
+test('authenticated item prices apply the saved user discount margin', function (): void {
+    $user = User::factory()->create([
+        'discount_margin_percent' => -20,
+    ]);
+    Sanctum::actingAs($user);
+
+    $group = CarGroup::factory()->create(['name' => 'Discount test']);
+    $item = Item::factory()->create([
+        'car_group_id' => $group->id,
+        'serial_code' => 'DISC-100',
+        'weight_kg' => 2.0,
+        'pt_ppm' => 100,
+        'pd_ppm' => 10,
+        'rh_ppm' => 2,
+    ]);
+    itemDiscoveryApiAttachImage($item);
+
+    $priceService = Mockery::mock(ItemPriceService::class);
+    $priceService->shouldReceive('priceFor')->andReturn(100.0);
+    app()->instance(ItemPriceService::class, $priceService);
+
+    $response = getJson("/api/items/{$item->id}");
+
+    $response->assertOk();
+    $response->assertJsonPath('data.basePrice', 100);
+    $response->assertJsonPath('data.price', 80);
+    $response->assertJsonPath('data.discountPercent', 20);
+    $response->assertJsonPath('data.priceAdjustmentPercent', -20);
 });

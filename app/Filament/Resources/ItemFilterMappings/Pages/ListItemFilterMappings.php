@@ -20,31 +20,30 @@ class ListItemFilterMappings extends ListRecords
             ->where('status', ItemFilterMapping::STATUS_NEEDS_REVIEW)
             ->count();
 
-        return "{$count} item(s) are temporarily hidden from customers because some pricing information needs confirmation. Review the issue, check the proposed price, then approve the item so it can be shown again.";
+        return __('admin.ui.pricing_review.subheading', ['count' => $count]);
     }
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('scanCandidates')
-                ->label('Recheck items')
+                ->label(__('admin.ui.pricing_review.recheck_items'))
                 ->icon('heroicon-o-magnifying-glass')
                 ->action(function (): void {
                     $summary = app(FilterCandidateDetectionService::class)->scan();
 
                     Notification::make()
-                        ->title('Filter candidate scan completed')
-                        ->body(sprintf(
-                            '%d scanned, %d candidates, %d matched, %d need review.',
-                            $summary['scanned'],
-                            $summary['candidates'],
-                            $summary['matched'],
-                            $summary['needs_review'],
-                        ))
+                        ->title(__('admin.ui.pricing_review.scan_completed'))
+                        ->body(__('admin.ui.pricing_review.scan_body', [
+                            'scanned' => $summary['scanned'],
+                            'candidates' => $summary['candidates'],
+                            'matched' => $summary['matched'],
+                            'review' => $summary['needs_review'],
+                        ]))
                         ->success()
                         ->send();
                 }),
-            CreateAction::make()->label('Add filter reference'),
+            CreateAction::make()->label(__('admin.ui.pricing_review.add_filter_reference')),
         ];
     }
 }

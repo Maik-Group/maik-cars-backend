@@ -12,7 +12,7 @@ class ListNotificationAudiences extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Create reusable user groups for targeted messaging.';
+        return __('admin.ui.subheadings.audiences');
     }
 
     protected function getHeaderActions(): array

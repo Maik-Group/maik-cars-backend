@@ -33,6 +33,7 @@ class ItemCatalogStats extends StatsOverviewWidget
             ->count();
 
         $withoutImage = Item::query()
+            ->apiVisible()
             ->whereDoesntHave(
                 'media',
                 fn ($query) => $query->where('collection_name', 'images'),
@@ -40,20 +41,18 @@ class ItemCatalogStats extends StatsOverviewWidget
             ->count();
 
         return [
-            Stat::make('Shown in app', number_format($shownInApp))
-                ->description('Item records available to customer')
+            Stat::make(__('admin.ui.stats.shown_in_app'), number_format($shownInApp))
+                ->description(__('admin.ui.stats.shown_in_app_description'))
                 ->icon('heroicon-o-eye')
                 ->color('success'),
-            Stat::make('Needs review', number_format($needsReview))
-                ->description('Items hidden until their details are checked')
+            Stat::make(__('admin.ui.stats.needs_review'), number_format($needsReview))
+                ->description(__('admin.ui.stats.needs_review_description'))
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color('warning'),
-            Stat::make('No image', number_format($withoutImage))
-                ->description('Items missing a catalog image')
+            Stat::make(__('admin.ui.stats.no_image'), number_format($withoutImage))
+                ->description(__('admin.ui.stats.no_image_description'))
                 ->icon('heroicon-o-photo')
                 ->color('danger'),
         ];
     }
-
-
 }

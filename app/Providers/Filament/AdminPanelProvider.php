@@ -4,6 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Widgets\MetalTrendsChart;
 use App\Filament\Widgets\PlatformStats;
+use App\Http\Middleware\SetAdminLocale;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -36,6 +38,24 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->profile()
+            ->userMenuItems([
+                Action::make('languageEnglish')
+                    ->label('English')
+                    ->icon('heroicon-o-language')
+                    ->url(fn (): string => route('dashboard.language', ['locale' => 'en'])),
+                Action::make('languageArabic')
+                    ->label('العربية')
+                    ->icon('heroicon-o-language')
+                    ->url(fn (): string => route('dashboard.language', ['locale' => 'ar'])),
+                Action::make('languageGerman')
+                    ->label('Deutsch')
+                    ->icon('heroicon-o-language')
+                    ->url(fn (): string => route('dashboard.language', ['locale' => 'de'])),
+                Action::make('languageBulgarian')
+                    ->label('Български')
+                    ->icon('heroicon-o-language')
+                    ->url(fn (): string => route('dashboard.language', ['locale' => 'bg'])),
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 PlatformStats::class,
@@ -46,6 +66,7 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                SetAdminLocale::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,

@@ -23,6 +23,26 @@ class AdminNotificationCampaignResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Communication';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.notification_history');
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return __('admin.groups.communication');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.models.notification_campaign');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.nav.notification_history');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return AdminNotificationCampaignForm::configure($schema);

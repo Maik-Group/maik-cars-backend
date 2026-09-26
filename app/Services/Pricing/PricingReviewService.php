@@ -54,33 +54,51 @@ final class PricingReviewService
 
         $type = (string) ($review['type'] ?? 'pricing_data');
         $label = match ($type) {
-            'component_weight' => 'Component weight needs confirmation',
-            'metallic_component' => 'Material details need confirmation',
-            'assay_source' => 'Metal values or source need confirmation',
+            'component_weight' => __('admin.ui.pricing_review.issue_component_weight'),
+            'metallic_component' => __('admin.ui.pricing_review.issue_metallic_component'),
+            'assay_source' => __('admin.ui.pricing_review.issue_assay_source'),
             default => $this->genericIssueLabel($mapping, $evidence),
         };
 
         return [
             'type' => $type,
             'label' => $label,
-            'instruction' => (string) ($review['instruction'] ?? $mapping->notes ?? 'Check the item details before showing this item in the app again.'),
+            'instruction' => $this->localizedInstruction($review, $mapping),
             'variant' => filled($review['variant'] ?? null) ? (string) $review['variant'] : null,
         ];
+    }
+
+    /** @param array<string, mixed> $review */
+    private function localizedInstruction(array $review, ItemFilterMapping $mapping): string
+    {
+        if (($review['type'] ?? null) === 'assay_source' && ($review['variant'] ?? null) === 'A2114906836') {
+            return __('admin.ui.pricing_review.excel_kt1200_instruction');
+        }
+
+        if (filled($review['instruction'] ?? null)) {
+            return (string) $review['instruction'];
+        }
+
+        if (filled($mapping->notes)) {
+            return (string) $mapping->notes;
+        }
+
+        return __('admin.ui.pricing_review.instruction_default');
     }
 
     /** @param array<string, mixed> $evidence */
     private function genericIssueLabel(ItemFilterMapping $mapping, array $evidence): string
     {
         if ($mapping->filter_item_id === null && filled($mapping->filter_serial)) {
-            return 'Matching filter item was not found';
+            return __('admin.ui.pricing_review.issue_matching_filter_missing');
         }
 
         if ($mapping->filter_item_id === null && (bool) ($evidence['explicit'] ?? false)) {
-            return 'Filter details need confirmation';
+            return __('admin.ui.pricing_review.issue_filter_details');
         }
 
         if ($mapping->filter_item_id === null && (bool) ($evidence['threshold_match'] ?? false)) {
-            return 'Weight and price need confirmation';
+            return __('admin.ui.pricing_review.issue_weight_price');
         }
 
         if ($mapping->item instanceof Item && $mapping->filter_item_id !== null) {
@@ -91,14 +109,14 @@ final class PricingReviewService
             );
 
             return match ($result['reason'] ?? null) {
-                'missing_filter_weight' => 'Filter weight is missing',
-                'invalid_net_weight' => 'Filter weight is too high for this item',
-                'implausible_net_weight' => 'Remaining item weight looks too low',
-                default => 'Price details need confirmation',
+                'missing_filter_weight' => __('admin.ui.pricing_review.issue_filter_weight_missing'),
+                'invalid_net_weight' => __('admin.ui.pricing_review.issue_filter_weight_high'),
+                'implausible_net_weight' => __('admin.ui.pricing_review.issue_remaining_weight_low'),
+                default => __('admin.ui.pricing_review.issue_price_details'),
             };
         }
 
-        return 'Price details need confirmation';
+        return __('admin.ui.pricing_review.issue_price_details');
     }
 
     /** @return array{all_safe:bool,count:int,rows:list<array<string,mixed>>} */
@@ -165,7 +183,7 @@ final class PricingReviewService
         $preview = $this->previewFamilyWeight($mapping, $filterWeightKg);
 
         if (! $preview['all_safe']) {
-            throw new RuntimeException('The entered component weight is not safe for every linked item. Review the preview and weight value.');
+            throw new RuntimeException(__('admin.ui.pricing_review.error_unsafe_weight'));
         }
 
         $mappingIds = collect($preview['rows'])->pluck('mapping_id')->all();
@@ -178,7 +196,7 @@ final class PricingReviewService
                 ->get();
 
             if ($records->count() !== count($mappingIds)) {
-                throw new RuntimeException('The review family changed while the preview was open. Refresh and try again.');
+                throw new RuntimeException(__('admin.ui.pricing_review.error_family_changed'));
             }
 
             foreach ($records as $record) {
@@ -217,7 +235,7 @@ final class PricingReviewService
         $mappings = $this->relatedReviewMappings($mapping);
 
         if ($mappings->isEmpty()) {
-            throw new RuntimeException('No linked Needs Review items were found.');
+            throw new RuntimeException(__('admin.ui.pricing_review.error_no_linked_items'));
         }
 
         DB::transaction(function () use ($mappings, $approvedBy, $note): void {

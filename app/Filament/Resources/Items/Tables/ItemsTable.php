@@ -25,24 +25,36 @@ class ItemsTable
         $table = $table
             ->columns([
                 ImageColumn::make('image')
-                    ->label('Image')
+                    ->label(__('admin.ui.items.image'))
                     ->circular()
                     ->size(48)
                     ->getStateUsing(fn (Item $record): string => $record->getFirstMediaUrl('images', 'thumb')),
                 TextColumn::make('serial_code')
-                    ->label('Serial')
-                    ->searchable()
+                    ->label(__('admin.ui.items.serial'))
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $normalized = Item::normalizeSerialValue($search);
+                        $rawSearch = '%'.trim($search).'%';
+
+                        return $query->where(function (Builder $searchQuery) use ($rawSearch, $normalized): void {
+                            $searchQuery->where('serial_code', 'like', $rawSearch);
+
+                            if ($normalized !== '') {
+                                $searchQuery->orWhere('normalized_serial', 'like', "%{$normalized}%");
+                            }
+                        });
+                    })
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('model')
+                    ->label(__('admin.ui.items.model'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('carGroup.name')
-                    ->label('Car group')
+                    ->label(__('admin.ui.items.car_group'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('weight_kg')
-                    ->label('Weight (kg)')
+                    ->label(__('admin.ui.items.weight'))
                     ->formatStateUsing(fn (mixed $state): string => self::formatNumber($state, 3))
                     ->sortable(),
                 TextColumn::make('pt_ppm')
@@ -58,16 +70,18 @@ class ItemsTable
                     ->formatStateUsing(fn (mixed $state): string => self::formatNumber($state, 4))
                     ->sortable(),
                 TextColumn::make('current_price')
-                    ->label('Price (USD)')
+                    ->label(__('admin.ui.items.price_usd'))
                     ->getStateUsing(fn (Item $record): float => app(ItemPriceService::class)->priceFor($record, 'USD'))
                     ->money('USD'),
                 TextColumn::make('pricing_review_status')
-                    ->label('Pricing review')
-                    ->getStateUsing(fn (Item $record): string => $record->filterMapping?->status === ItemFilterMapping::STATUS_NEEDS_REVIEW ? 'Needs review' : 'Clear')
+                    ->label(__('admin.ui.items.pricing_review'))
+                    ->getStateUsing(fn (Item $record): string => $record->filterMapping?->status === ItemFilterMapping::STATUS_NEEDS_REVIEW
+                        ? __('admin.ui.items.needs_review')
+                        : __('admin.ui.items.clear'))
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Needs review' ? 'warning' : 'success'),
+                    ->color(fn (Item $record): string => $record->filterMapping?->status === ItemFilterMapping::STATUS_NEEDS_REVIEW ? 'warning' : 'success'),
                 TextColumn::make('pricing_review_reason')
-                    ->label('Reason')
+                    ->label(__('admin.ui.items.reason'))
                     ->getStateUsing(function (Item $record): ?string {
                         $mapping = $record->filterMapping;
 
@@ -80,20 +94,20 @@ class ItemsTable
                     ->placeholder('—')
                     ->wrap(),
                 TextColumn::make('updated_at')
-                    ->label('Updated')
+                    ->label(__('admin.ui.items.updated'))
                     ->since()
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('car_group_id')
-                    ->label('Car group')
+                    ->label(__('admin.ui.items.car_group'))
                     ->options(fn (): array => CarGroup::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->searchable(),
                 SelectFilter::make('pricing_review')
-                    ->label('Pricing review')
+                    ->label(__('admin.ui.items.pricing_review'))
                     ->options([
-                        'needs_review' => 'Needs review — blocked from being shown in the app',
-                        'clear' => 'Clear',
+                        'needs_review' => __('admin.ui.items.review_blocked'),
+                        'clear' => __('admin.ui.items.clear'),
                     ])
                     ->query(function ($query, array $data) {
                         return match ($data['value'] ?? null) {
@@ -103,7 +117,7 @@ class ItemsTable
                         };
                     }),
                 TernaryFilter::make('has_image')
-                    ->label('Has image')
+                    ->label(__('admin.ui.items.has_image'))
                     ->queries(
                         true: fn ($query) => $query->whereHas('media', fn ($mediaQuery) => $mediaQuery->where('collection_name', 'images')),
                         false: fn ($query) => $query->whereDoesntHave('media', fn ($mediaQuery) => $mediaQuery->where('collection_name', 'images')),
@@ -130,27 +144,27 @@ class ItemsTable
 
     private static function serialGroup(): Group
     {
-        return Group::make('serial_code')
-            ->label('Serial')
+        return Group::make('normalized_serial')
+            ->label(__('admin.ui.items.serial'))
             ->titlePrefixedWithLabel(false)
-            ->getTitleFromRecordUsing(fn (Item $record): string => self::displayValue($record->serial_code))
+            ->getTitleFromRecordUsing(fn (Item $record): string => self::displayValue($record->normalized_serial ?: Item::normalizeSerialValue($record->serial_code)))
             ->getDescriptionFromRecordUsing(fn (Item $record): string => self::groupDescription($record))
             ->scopeQueryByKeyUsing(
-                fn (Builder $query, string $key): Builder => $query->where('serial_code', $key),
+                fn (Builder $query, string $key): Builder => $query->where('normalized_serial', Item::normalizeSerialValue($key)),
             )
             ->orderQueryUsing(
-                fn (Builder $query, string $direction): Builder => $query->orderBy('serial_code', $direction),
+                fn (Builder $query, string $direction): Builder => $query->orderBy('normalized_serial', $direction),
             )
             ->collapsible();
     }
 
     private static function groupDescription(Item $record): string
     {
-        $serial = trim((string) $record->serial_code);
+        $serial = Item::normalizeSerialValue($record->normalized_serial ?: $record->serial_code);
 
         $siblings = Item::query()
             ->with(['carGroup', 'media', 'filterMapping'])
-            ->where('serial_code', $serial)
+            ->where('normalized_serial', $serial)
             ->orderByDesc('created_at')
             ->get();
 
@@ -158,34 +172,27 @@ class ItemsTable
             ->first(fn (Item $item): bool => $item->isApiVisible());
 
         if (! $representative instanceof Item) {
-            return sprintf(
-                'Not currently shown in the app · %d related stored items',
-                $siblings->count(),
-            );
+            return __('admin.ui.items.not_shown', ['count' => $siblings->count()]);
         }
 
-        $calculable = $siblings->filter(
-            fn (Item $item): bool => (float) $item->weight_kg > 0
-                && ((float) $item->pt_ppm > 0 || (float) $item->pd_ppm > 0 || (float) $item->rh_ppm > 0),
-        );
+        $visibleSiblings = $siblings->filter(fn (Item $item): bool => $item->isApiVisible());
 
-        $averagePrice = $calculable->isEmpty()
+        $averagePrice = $visibleSiblings->isEmpty()
             ? app(ItemPriceService::class)->priceFor($representative, 'USD')
-            : (float) $calculable
+            : (float) $visibleSiblings
                 ->map(fn (Item $item): float => app(ItemPriceService::class)->priceFor($item, 'USD'))
                 ->avg();
 
-        return sprintf(
-            '%d related items · Model: %s · Car group: %s · Weight: %s kg · PT: %s · PD: %s · RH: %s · Price: $%s',
-            $siblings->count(),
-            self::displayValue($representative->model),
-            self::displayValue($representative->carGroup?->name),
-            self::formatNumber($representative->weight_kg, 3),
-            self::formatNumber($representative->pt_ppm, 4),
-            self::formatNumber($representative->pd_ppm, 4),
-            self::formatNumber($representative->rh_ppm, 4),
-            number_format($averagePrice, 2),
-        );
+        return __('admin.ui.items.group_summary', [
+            'count' => $siblings->count(),
+            'model' => self::displayValue($representative->model),
+            'group' => self::displayValue($representative->carGroup?->name),
+            'weight' => self::formatNumber($representative->weight_kg, 3),
+            'pt' => self::formatNumber($representative->pt_ppm, 4),
+            'pd' => self::formatNumber($representative->pd_ppm, 4),
+            'rh' => self::formatNumber($representative->rh_ppm, 4),
+            'price' => number_format($averagePrice, 2),
+        ]);
     }
 
     private static function formatNumber(mixed $value, int $maxDecimals): string

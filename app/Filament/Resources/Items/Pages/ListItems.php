@@ -31,35 +31,35 @@ class ListItems extends ListRecords
     public function getSubheading(): ?string
     {
         if (app(ItemApiSettingsService::class)->uniqueSerialItemsEnabled()) {
-            return 'All items is the default view. Use Grouped items to review serial codes that have more than one stored item.';
+            return __('admin.ui.subheadings.items_grouped');
         }
 
-        return 'Manage converter items, technical specs, and app-ready images.';
+        return __('admin.ui.subheadings.items_all');
     }
 
     public function getTabs(): array
     {
         if (! app(ItemApiSettingsService::class)->uniqueSerialItemsEnabled()) {
             return [
-                'all' => Tab::make('All items'),
+                'all' => Tab::make(__('admin.ui.items.all_items')),
             ];
         }
 
         return [
-            'all' => Tab::make('All items')
+            'all' => Tab::make(__('admin.ui.items.all_items'))
                 ->icon('heroicon-o-list-bullet'),
-            'grouped' => Tab::make('Grouped items')
+            'grouped' => Tab::make(__('admin.ui.items.grouped_items'))
                 ->icon('heroicon-o-rectangle-stack')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                    ->whereNotNull('serial_code')
-                    ->where('serial_code', '!=', '')
-                    ->whereIn('serial_code', function ($subquery): void {
+                    ->whereNotNull('normalized_serial')
+                    ->where('normalized_serial', '!=', '')
+                    ->whereIn('normalized_serial', function ($subquery): void {
                         $subquery
-                            ->select('serial_code')
+                            ->select('normalized_serial')
                             ->from('items')
-                            ->whereNotNull('serial_code')
-                            ->where('serial_code', '!=', '')
-                            ->groupBy('serial_code')
+                            ->whereNotNull('normalized_serial')
+                            ->where('normalized_serial', '!=', '')
+                            ->groupBy('normalized_serial')
                             ->havingRaw('COUNT(*) > 1');
                     })),
         ];
@@ -74,7 +74,7 @@ class ListItems extends ListRecords
     {
         $this->tableGrouping = app(ItemApiSettingsService::class)->uniqueSerialItemsEnabled()
             && $this->activeTab === 'grouped'
-            ? 'serial_code'
+            ? 'normalized_serial'
             : null;
     }
 

@@ -17,27 +17,29 @@ class NotificationAudiencesTable
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label(__('admin.ui.audiences.name'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('description')
+                    ->label(__('admin.ui.audiences.description_field'))
                     ->limit(50)
                     ->toggleable(),
                 TextColumn::make('users_count')
-                    ->label('Users')
+                    ->label(__('admin.ui.audiences.users_count'))
                     ->numeric()
                     ->sortable(),
                 IconColumn::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.audiences.active'))
                     ->boolean(),
                 TextColumn::make('updated_at')
-                    ->label('Updated')
+                    ->label(__('admin.ui.audiences.updated'))
                     ->since()
                     ->sortable(),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
-                    ->label('Active')
+                    ->label(__('admin.ui.audiences.active'))
                     ->boolean(),
             ])
             ->recordActions([

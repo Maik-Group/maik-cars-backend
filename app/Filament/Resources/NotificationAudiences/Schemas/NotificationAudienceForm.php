@@ -18,24 +18,26 @@ class NotificationAudienceForm
     {
         return $schema
             ->components([
-                Section::make('Audience group')
-                    ->description('Create reusable user groups for targeted messaging.')
+                Section::make(__('admin.ui.audiences.section'))
+                    ->description(__('admin.ui.audiences.description'))
                     ->columns([
                         'default' => 1,
                         'md' => 2,
                     ])
                     ->components([
                         TextInput::make('name')
+                            ->label(__('admin.ui.audiences.name'))
                             ->required()
                             ->maxLength(255),
                         Toggle::make('is_active')
-                            ->label('Active')
+                            ->label(__('admin.ui.audiences.active'))
                             ->default(true),
                         Textarea::make('description')
+                            ->label(__('admin.ui.audiences.description_field'))
                             ->rows(3)
                             ->columnSpanFull(),
                         Select::make('users')
-                            ->label('Group users')
+                            ->label(__('admin.ui.audiences.users'))
                             ->relationship(
                                 name: 'users',
                                 titleAttribute: 'name',
@@ -51,9 +53,9 @@ class NotificationAudienceForm
                             ->multiple()
                             ->searchable(['name', 'email'])
                             ->preload()
-                            ->searchPrompt('Search users by name or email')
-                            ->noOptionsMessage('No active app users are available.')
-                            ->noSearchResultsMessage('No users match your search.')
+                            ->searchPrompt(__('admin.ui.audiences.search_prompt'))
+                            ->noOptionsMessage(__('admin.ui.audiences.no_options'))
+                            ->noSearchResultsMessage(__('admin.ui.audiences.no_results'))
                             ->columnSpanFull(),
                     ]),
             ]);

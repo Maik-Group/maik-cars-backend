@@ -25,6 +25,7 @@ class UpdateProfileRequest extends FormRequest
                 Rule::unique(User::class, 'email')->ignore($this->user()?->getKey()),
             ],
             'preferred_language' => ['sometimes', 'string', Rule::in(PreferredLanguage::values())],
+            'discount_margin_percent' => ['sometimes', 'numeric', 'min:-100', 'max:4'],
         ];
     }
 }

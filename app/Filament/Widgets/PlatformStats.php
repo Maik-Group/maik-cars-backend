@@ -24,28 +24,28 @@ class PlatformStats extends StatsOverviewWidget
 
         $latestPt = $latestMetalPrice?->pt_usd_per_oz;
         $latestPriceDescription = $latestMetalPrice?->fetched_at
-            ? 'Stored market snapshot updated '.$latestMetalPrice->fetched_at->diffForHumans()
-            : 'Waiting for the first stored market snapshot';
+            ? __('admin.ui.stats.snapshot_updated', ['time' => $latestMetalPrice->fetched_at->diffForHumans()])
+            : __('admin.ui.stats.snapshot_waiting');
 
         return [
-            Stat::make('Total Items', number_format(Item::query()->count()))
-                ->description('Total catalog records stored in the system')
+            Stat::make(__('admin.ui.stats.total_items'), number_format(Item::query()->count()))
+                ->description(__('admin.ui.stats.total_items_description'))
                 ->icon('heroicon-o-rectangle-stack')
                 ->color('primary'),
-            Stat::make('Active App Users', number_format($activeAppUsers))
-                ->description('Active end-user accounts with mobile access')
+            Stat::make(__('admin.ui.stats.active_app_users'), number_format($activeAppUsers))
+                ->description(__('admin.ui.stats.active_app_users_description'))
                 ->icon('heroicon-o-users')
                 ->color('success'),
-            Stat::make('Saved Items', number_format(DB::table('saved_items')->count()))
-                ->description('Total bookmarks created by end users')
+            Stat::make(__('admin.ui.stats.saved_items'), number_format(DB::table('saved_items')->count()))
+                ->description(__('admin.ui.stats.saved_items_description'))
                 ->icon('heroicon-o-heart')
                 ->color('warning'),
-            Stat::make('Sent Campaigns', number_format(AdminNotificationCampaign::query()->where('status', 'sent')->count()))
-                ->description('Campaigns delivered from the dashboard communication center')
+            Stat::make(__('admin.ui.stats.sent_campaigns'), number_format(AdminNotificationCampaign::query()->where('status', 'sent')->count()))
+                ->description(__('admin.ui.stats.sent_campaigns_description'))
                 ->icon('heroicon-o-paper-airplane')
                 ->color('primary'),
             Stat::make(
-                'Latest PT (USD/Oz)',
+                __('admin.ui.stats.latest_pt'),
                 is_numeric($latestPt) ? number_format((float) $latestPt, 2) : 'N/A'
             )
                 ->description($latestPriceDescription)

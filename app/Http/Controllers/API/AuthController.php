@@ -89,6 +89,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'preferred_language' => $user->preferredLanguageOrDefault(),
+                'discount_margin_percent' => $user->discountMarginPercent(),
             ],
         ]);
     }
@@ -114,7 +115,16 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()?->currentAccessToken()?->delete();
+        /** @var User|null $user */
+        $user = $request->user();
+
+        if ($user?->unlimited_devices) {
+            $user->currentAccessToken()?->delete();
+        } elseif ($user) {
+            // Signing out from a standard account releases its single-device binding
+            // so the next successful login can claim the account from another device.
+            $user->resetAuthorizedDevice();
+        }
 
         return response()->json([
             'message' => 'Logged out successfully.',

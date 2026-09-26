@@ -122,9 +122,6 @@ class Item extends Model implements HasMedia
     {
         return $query
             ->calculablePrice()
-            ->whereHas('media', static function (Builder $mediaQuery): void {
-                $mediaQuery->where('collection_name', 'images');
-            })
             ->whereDoesntHave('filterMapping', static function (Builder $mappingQuery): void {
                 $mappingQuery->where('status', ItemFilterMapping::STATUS_NEEDS_REVIEW);
             });
@@ -138,7 +135,6 @@ class Item extends Model implements HasMedia
                 || (float) $this->pd_ppm > 0
                 || (float) $this->rh_ppm > 0
             )
-            && $this->hasMedia('images')
             && ! $this->filterMapping()
                 ->where('status', ItemFilterMapping::STATUS_NEEDS_REVIEW)
                 ->exists();
