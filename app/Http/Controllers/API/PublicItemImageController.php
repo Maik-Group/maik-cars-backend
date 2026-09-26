@@ -13,62 +13,6 @@ use Throwable;
 
 class PublicItemImageController extends Controller
 {
-    public function updateByCode(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:100'],
-            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,avif', 'max:20480'],
-        ]);
-
-        $code = trim((string) $validated['code']);
-        $normalizedCode = Item::normalizeSerialValue($code);
-
-        if ($normalizedCode === '') {
-            return response()->json([
-                'message' => 'The code field must contain a valid code.',
-                'errors' => [
-                    'code' => ['The code field must contain a valid code.'],
-                ],
-            ], 422);
-        }
-
-        $items = $this->matchingItemsQuery([$normalizedCode])->get();
-
-        if ($items->isEmpty()) {
-            return response()->json([
-                'message' => 'No items were found for the provided code.',
-                'code' => $code,
-                'normalized_code' => $normalizedCode,
-                'updated_count' => 0,
-            ], 404);
-        }
-
-        $uploadedImage = $request->file('image');
-        $imagePath = $uploadedImage?->getRealPath();
-        $imageContents = is_string($imagePath) ? file_get_contents($imagePath) : false;
-
-        if ($imageContents === false) {
-            return response()->json([
-                'message' => 'The uploaded image could not be read.',
-            ], 422);
-        }
-
-        $extension = strtolower((string) ($uploadedImage->guessExtension() ?: $uploadedImage->getClientOriginalExtension() ?: 'jpg'));
-        $updatedItems = [];
-
-        foreach ($items as $item) {
-            $updatedItems[] = $this->replaceItemImage($item, $imageContents, $extension);
-        }
-
-        return response()->json([
-            'message' => 'Item images updated successfully.',
-            'code' => $code,
-            'normalized_code' => $normalizedCode,
-            'updated_count' => count($updatedItems),
-            'items' => $updatedItems,
-        ]);
-    }
-
     public function syncByMediaRange(Request $request): JsonResponse
     {
         $validated = $request->validate([

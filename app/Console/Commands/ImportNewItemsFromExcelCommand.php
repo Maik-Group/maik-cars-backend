@@ -31,9 +31,14 @@ class ImportNewItemsFromExcelCommand extends Command
         $path = $this->resolvePath((string) $this->argument('path'));
         $dryRun = (bool) $this->option('dry-run');
 
+        $this->seenFingerprints = [];
+
         $report = [
             'rows_scanned' => 0,
             'rows_created' => 0,
+            'rows_deleted_corrupt_placeholders' => 0,
+            'rows_skipped_corrupt_placeholders' => 0,
+            'rows_sanitized_model_placeholders' => 0,
             'rows_skipped_existing' => 0,
             'rows_skipped_duplicate_in_file' => 0,
             'rows_invalid' => 0,
@@ -48,6 +53,8 @@ class ImportNewItemsFromExcelCommand extends Command
         DB::beginTransaction();
 
         try {
+            $this->deletePreviouslyImportedCorruptPlaceholders($report);
+
             foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
                 $this->processSheet($sheet, $groupResolver, $report);
             }
@@ -139,6 +146,17 @@ class ImportNewItemsFromExcelCommand extends Command
             $model = $this->cleanString($sheet->getCellByColumnAndRow(1, $row)->getValue())
                 ?? $group->name;
 
+            if ($this->isQuestionMarkOnlyPlaceholder($serial)) {
+                $report['rows_skipped_corrupt_placeholders']++;
+
+                continue;
+            }
+
+            if ($this->hasCorruptQuestionMarkRun($model)) {
+                $model = $this->sanitizeModelPlaceholder($model) ?? $group->name;
+                $report['rows_sanitized_model_placeholders']++;
+            }
+
             $weight = LegacyItemWeightNormalizer::toKilograms(
                 $this->readDecimal($sheet, 3, $row, 3)
             );
@@ -221,6 +239,56 @@ class ImportNewItemsFromExcelCommand extends Command
 
             $report['rows_created']++;
         }
+    }
+
+    /**
+     * @param  array<string, int>  $report
+     */
+    private function deletePreviouslyImportedCorruptPlaceholders(array &$report): void
+    {
+        $candidates = Item::query()
+            ->where('source', 'excel_import')
+            ->where(function ($query): void {
+                $query->where('serial_code', 'like', '%?%')
+                    ->orWhere('model', 'like', '%?%');
+            })
+            ->get(['id', 'serial_code', 'model']);
+
+        foreach ($candidates as $item) {
+            if (
+                ! $this->isQuestionMarkOnlyPlaceholder($item->serial_code)
+                && ! $this->hasCorruptQuestionMarkRun($item->model)
+            ) {
+                continue;
+            }
+
+            $item->delete();
+            $report['rows_deleted_corrupt_placeholders']++;
+        }
+    }
+
+    private function isQuestionMarkOnlyPlaceholder(?string $value): bool
+    {
+        if (! is_string($value) || ! str_contains($value, '?')) {
+            return false;
+        }
+
+        $withoutQuestionMarks = preg_replace('/[?\\s]+/u', '', $value);
+
+        return $withoutQuestionMarks === '';
+    }
+
+    private function hasCorruptQuestionMarkRun(?string $value): bool
+    {
+        return is_string($value) && preg_match('/\\?{2,}/u', $value) === 1;
+    }
+
+    private function sanitizeModelPlaceholder(string $model): ?string
+    {
+        $sanitized = preg_replace('/\\?{2,}/u', '', $model);
+        $sanitized = is_string($sanitized) ? trim($sanitized, ' \\t\\n\\r\\0\\x0B-_/') : '';
+
+        return $sanitized === '' ? null : $sanitized;
     }
 
     private function itemAlreadyExists(

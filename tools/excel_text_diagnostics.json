@@ -1,0 +1,1684 @@
+{
+  "question_count": 79,
+  "non_ascii_count": 2,
+  "question_rows": [
+    {
+      "sheet": "AUDI VW",
+      "row": 571,
+      "model": "AUDIVW / FORD??",
+      "serial": "2U2J5E212FA1A",
+      "model_codepoints": [
+        "U+0041",
+        "U+0055",
+        "U+0044",
+        "U+0049",
+        "U+0056",
+        "U+0057",
+        "U+0020",
+        "U+002F",
+        "U+0020",
+        "U+0046",
+        "U+004F",
+        "U+0052",
+        "U+0044",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0032",
+        "U+0055",
+        "U+0032",
+        "U+004A",
+        "U+0035",
+        "U+0045",
+        "U+0032",
+        "U+0031",
+        "U+0032",
+        "U+0046",
+        "U+0041",
+        "U+0031",
+        "U+0041"
+      ]
+    },
+    {
+      "sheet": "BMW",
+      "row": 29,
+      "model": "BMW",
+      "serial": "171?693",
+      "model_codepoints": [
+        "U+0042",
+        "U+004D",
+        "U+0057"
+      ],
+      "serial_codepoints": [
+        "U+0031",
+        "U+0037",
+        "U+0031",
+        "U+003F",
+        "U+0036",
+        "U+0039",
+        "U+0033"
+      ]
+    },
+    {
+      "sheet": "BMW",
+      "row": 30,
+      "model": "BMW",
+      "serial": "171?693",
+      "model_codepoints": [
+        "U+0042",
+        "U+004D",
+        "U+0057"
+      ],
+      "serial_codepoints": [
+        "U+0031",
+        "U+0037",
+        "U+0031",
+        "U+003F",
+        "U+0036",
+        "U+0039",
+        "U+0033"
+      ]
+    },
+    {
+      "sheet": "MERCEDES",
+      "row": 355,
+      "model": "MERCEDES",
+      "serial": "PF600?",
+      "model_codepoints": [
+        "U+004D",
+        "U+0045",
+        "U+0052",
+        "U+0043",
+        "U+0045",
+        "U+0044",
+        "U+0045",
+        "U+0053"
+      ],
+      "serial_codepoints": [
+        "U+0050",
+        "U+0046",
+        "U+0036",
+        "U+0030",
+        "U+0030",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "PSA",
+      "row": 538,
+      "model": "PEUGEOT",
+      "serial": "TRPSAK?30",
+      "model_codepoints": [
+        "U+0050",
+        "U+0045",
+        "U+0055",
+        "U+0047",
+        "U+0045",
+        "U+004F",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+0054",
+        "U+0052",
+        "U+0050",
+        "U+0053",
+        "U+0041",
+        "U+004B",
+        "U+003F",
+        "U+0033",
+        "U+0030"
+      ]
+    },
+    {
+      "sheet": "FIAT",
+      "row": 182,
+      "model": "",
+      "serial": "51791?00",
+      "model_codepoints": [],
+      "serial_codepoints": [
+        "U+0035",
+        "U+0031",
+        "U+0037",
+        "U+0039",
+        "U+0031",
+        "U+003F",
+        "U+0030",
+        "U+0030"
+      ]
+    },
+    {
+      "sheet": "FIAT",
+      "row": 183,
+      "model": "",
+      "serial": "51791?00",
+      "model_codepoints": [],
+      "serial_codepoints": [
+        "U+0035",
+        "U+0031",
+        "U+0037",
+        "U+0039",
+        "U+0031",
+        "U+003F",
+        "U+0030",
+        "U+0030"
+      ]
+    },
+    {
+      "sheet": "FIAT",
+      "row": 184,
+      "model": "",
+      "serial": "51791?00",
+      "model_codepoints": [],
+      "serial_codepoints": [
+        "U+0035",
+        "U+0031",
+        "U+0037",
+        "U+0039",
+        "U+0031",
+        "U+003F",
+        "U+0030",
+        "U+0030"
+      ]
+    },
+    {
+      "sheet": "FIAT",
+      "row": 395,
+      "model": "SEVEL",
+      "serial": "8726?",
+      "model_codepoints": [
+        "U+0053",
+        "U+0045",
+        "U+0056",
+        "U+0045",
+        "U+004C"
+      ],
+      "serial_codepoints": [
+        "U+0038",
+        "U+0037",
+        "U+0032",
+        "U+0036",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RENAULT",
+      "row": 393,
+      "model": "RENAULT",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0052",
+        "U+0045",
+        "U+004E",
+        "U+0041",
+        "U+0055",
+        "U+004C",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RENAULT",
+      "row": 395,
+      "model": "RENAULT",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0052",
+        "U+0045",
+        "U+004E",
+        "U+0041",
+        "U+0055",
+        "U+004C",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RENAULT",
+      "row": 398,
+      "model": "RENAULT",
+      "serial": "????",
+      "model_codepoints": [
+        "U+0052",
+        "U+0045",
+        "U+004E",
+        "U+0041",
+        "U+0055",
+        "U+004C",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 6,
+      "model": "HONDA",
+      "serial": "????",
+      "model_codepoints": [
+        "U+0048",
+        "U+004F",
+        "U+004E",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 76,
+      "model": "HONDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0048",
+        "U+004F",
+        "U+004E",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 77,
+      "model": "HONDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0048",
+        "U+004F",
+        "U+004E",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 78,
+      "model": "HONDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0048",
+        "U+004F",
+        "U+004E",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 81,
+      "model": "HONDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0048",
+        "U+004F",
+        "U+004E",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 93,
+      "model": "ISUZU",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0049",
+        "U+0053",
+        "U+0055",
+        "U+005A",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 109,
+      "model": "ISUZU",
+      "serial": "8973?1134",
+      "model_codepoints": [
+        "U+0049",
+        "U+0053",
+        "U+0055",
+        "U+005A",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+0038",
+        "U+0039",
+        "U+0037",
+        "U+0033",
+        "U+003F",
+        "U+0031",
+        "U+0031",
+        "U+0033",
+        "U+0034"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 115,
+      "model": "ISUZU",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0049",
+        "U+0053",
+        "U+0055",
+        "U+005A",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 116,
+      "model": "JAPANESE????",
+      "serial": "12575299",
+      "model_codepoints": [
+        "U+004A",
+        "U+0041",
+        "U+0050",
+        "U+0041",
+        "U+004E",
+        "U+0045",
+        "U+0053",
+        "U+0045",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0031",
+        "U+0032",
+        "U+0035",
+        "U+0037",
+        "U+0035",
+        "U+0032",
+        "U+0039",
+        "U+0039"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 117,
+      "model": "JAPANESE????",
+      "serial": "225127",
+      "model_codepoints": [
+        "U+004A",
+        "U+0041",
+        "U+0050",
+        "U+0041",
+        "U+004E",
+        "U+0045",
+        "U+0053",
+        "U+0045",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0032",
+        "U+0032",
+        "U+0035",
+        "U+0031",
+        "U+0032",
+        "U+0037"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 127,
+      "model": "MAZDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 128,
+      "model": "MAZDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 129,
+      "model": "MAZDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 214,
+      "model": "MAZDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 215,
+      "model": "MAZDA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 238,
+      "model": "MAZDA_6?",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004D",
+        "U+0041",
+        "U+005A",
+        "U+0044",
+        "U+0041",
+        "U+005F",
+        "U+0036",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 243,
+      "model": "MITSUBISHI",
+      "serial": "??",
+      "model_codepoints": [
+        "U+004D",
+        "U+0049",
+        "U+0054",
+        "U+0053",
+        "U+0055",
+        "U+0042",
+        "U+0049",
+        "U+0053",
+        "U+0048",
+        "U+0049"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 453,
+      "model": "NISSAN????",
+      "serial": "REX062C",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0052",
+        "U+0045",
+        "U+0058",
+        "U+0030",
+        "U+0036",
+        "U+0032",
+        "U+0043"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 454,
+      "model": "NISSAN????",
+      "serial": "AGA3",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0041",
+        "U+0047",
+        "U+0041",
+        "U+0033"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 472,
+      "model": "NISSAN",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 473,
+      "model": "NISSAN",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 474,
+      "model": "NISSAN",
+      "serial": "????",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 475,
+      "model": "NISSAN",
+      "serial": "????",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 484,
+      "model": "SUBARU",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0053",
+        "U+0055",
+        "U+0042",
+        "U+0041",
+        "U+0052",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 539,
+      "model": "SUBARU",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0053",
+        "U+0055",
+        "U+0042",
+        "U+0041",
+        "U+0052",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 540,
+      "model": "SUBARU",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0053",
+        "U+0055",
+        "U+0042",
+        "U+0041",
+        "U+0052",
+        "U+0055"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 688,
+      "model": "TOYOTA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 701,
+      "model": "TOYOTA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 702,
+      "model": "TOYOTA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 746,
+      "model": "TOYOTA",
+      "serial": "??0",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+0030"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 892,
+      "model": "TOYOTA",
+      "serial": "?",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 893,
+      "model": "TOYOTA",
+      "serial": "?",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 895,
+      "model": "TOYOTA",
+      "serial": "4Y?",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+0034",
+        "U+0059",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 897,
+      "model": "TOYOTA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 901,
+      "model": "JAPANESE",
+      "serial": "????",
+      "model_codepoints": [
+        "U+004A",
+        "U+0041",
+        "U+0050",
+        "U+0041",
+        "U+004E",
+        "U+0045",
+        "U+0053",
+        "U+0045"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 902,
+      "model": "JAPANESE",
+      "serial": "????",
+      "model_codepoints": [
+        "U+004A",
+        "U+0041",
+        "U+0050",
+        "U+0041",
+        "U+004E",
+        "U+0045",
+        "U+0053",
+        "U+0045"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "JAPAN",
+      "row": 903,
+      "model": "JAPANESE",
+      "serial": "????",
+      "model_codepoints": [
+        "U+004A",
+        "U+0041",
+        "U+0050",
+        "U+0041",
+        "U+004E",
+        "U+0045",
+        "U+0053",
+        "U+0045"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "FORD",
+      "row": 367,
+      "model": "FORD",
+      "serial": "97B?5E212DE",
+      "model_codepoints": [
+        "U+0046",
+        "U+004F",
+        "U+0052",
+        "U+0044"
+      ],
+      "serial_codepoints": [
+        "U+0039",
+        "U+0037",
+        "U+0042",
+        "U+003F",
+        "U+0035",
+        "U+0045",
+        "U+0032",
+        "U+0031",
+        "U+0032",
+        "U+0044",
+        "U+0045"
+      ]
+    },
+    {
+      "sheet": "FORD",
+      "row": 368,
+      "model": "FORD",
+      "serial": "97B?5E212DE",
+      "model_codepoints": [
+        "U+0046",
+        "U+004F",
+        "U+0052",
+        "U+0044"
+      ],
+      "serial_codepoints": [
+        "U+0039",
+        "U+0037",
+        "U+0042",
+        "U+003F",
+        "U+0035",
+        "U+0045",
+        "U+0032",
+        "U+0031",
+        "U+0032",
+        "U+0044",
+        "U+0045"
+      ]
+    },
+    {
+      "sheet": "FORD",
+      "row": 373,
+      "model": "FORD",
+      "serial": "97?B5E242FB",
+      "model_codepoints": [
+        "U+0046",
+        "U+004F",
+        "U+0052",
+        "U+0044"
+      ],
+      "serial_codepoints": [
+        "U+0039",
+        "U+0037",
+        "U+003F",
+        "U+0042",
+        "U+0035",
+        "U+0045",
+        "U+0032",
+        "U+0034",
+        "U+0032",
+        "U+0046",
+        "U+0042"
+      ]
+    },
+    {
+      "sheet": "FORD",
+      "row": 577,
+      "model": "FORD",
+      "serial": "7G915?250HA",
+      "model_codepoints": [
+        "U+0046",
+        "U+004F",
+        "U+0052",
+        "U+0044"
+      ],
+      "serial_codepoints": [
+        "U+0037",
+        "U+0047",
+        "U+0039",
+        "U+0031",
+        "U+0035",
+        "U+003F",
+        "U+0032",
+        "U+0035",
+        "U+0030",
+        "U+0048",
+        "U+0041"
+      ]
+    },
+    {
+      "sheet": "SWEDEN",
+      "row": 4,
+      "model": "SAAB",
+      "serial": "????",
+      "model_codepoints": [
+        "U+0053",
+        "U+0041",
+        "U+0041",
+        "U+0042"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "SWEDEN",
+      "row": 150,
+      "model": "VOLVO",
+      "serial": "307??2??",
+      "model_codepoints": [
+        "U+0056",
+        "U+004F",
+        "U+004C",
+        "U+0056",
+        "U+004F"
+      ],
+      "serial_codepoints": [
+        "U+0033",
+        "U+0030",
+        "U+0037",
+        "U+003F",
+        "U+003F",
+        "U+0032",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "ROVER&LAND ROVER",
+      "row": 213,
+      "model": "LAND ROVER",
+      "serial": "BH4?5E212AA",
+      "model_codepoints": [
+        "U+004C",
+        "U+0041",
+        "U+004E",
+        "U+0044",
+        "U+0020",
+        "U+0052",
+        "U+004F",
+        "U+0056",
+        "U+0045",
+        "U+0052"
+      ],
+      "serial_codepoints": [
+        "U+0042",
+        "U+0048",
+        "U+0034",
+        "U+003F",
+        "U+0035",
+        "U+0045",
+        "U+0032",
+        "U+0031",
+        "U+0032",
+        "U+0041",
+        "U+0041"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 48,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 49,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 50,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 51,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 52,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 53,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 54,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 55,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 57,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 58,
+      "model": "????",
+      "serial": "C082S6045F",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0043",
+        "U+0030",
+        "U+0038",
+        "U+0032",
+        "U+0053",
+        "U+0036",
+        "U+0030",
+        "U+0034",
+        "U+0035",
+        "U+0046"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 59,
+      "model": "???? / BOSAL",
+      "serial": "A23428",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+0020",
+        "U+002F",
+        "U+0020",
+        "U+0042",
+        "U+004F",
+        "U+0053",
+        "U+0041",
+        "U+004C"
+      ],
+      "serial_codepoints": [
+        "U+0041",
+        "U+0032",
+        "U+0033",
+        "U+0034",
+        "U+0032",
+        "U+0038"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 60,
+      "model": "????",
+      "serial": "NDS1028",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+004E",
+        "U+0044",
+        "U+0053",
+        "U+0031",
+        "U+0030",
+        "U+0032",
+        "U+0038"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 61,
+      "model": "????",
+      "serial": "86171249",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0038",
+        "U+0036",
+        "U+0031",
+        "U+0037",
+        "U+0031",
+        "U+0032",
+        "U+0034",
+        "U+0039"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 62,
+      "model": "????",
+      "serial": "30613618",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0033",
+        "U+0030",
+        "U+0036",
+        "U+0031",
+        "U+0033",
+        "U+0036",
+        "U+0031",
+        "U+0038"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 63,
+      "model": "???? / ROVER",
+      "serial": "17KOY061",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+0020",
+        "U+002F",
+        "U+0020",
+        "U+0052",
+        "U+004F",
+        "U+0056",
+        "U+0045",
+        "U+0052"
+      ],
+      "serial_codepoints": [
+        "U+0031",
+        "U+0037",
+        "U+004B",
+        "U+004F",
+        "U+0059",
+        "U+0030",
+        "U+0036",
+        "U+0031"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 64,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 65,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 66,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 67,
+      "model": "????",
+      "serial": "25130022",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0032",
+        "U+0035",
+        "U+0031",
+        "U+0033",
+        "U+0030",
+        "U+0030",
+        "U+0032",
+        "U+0032"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 68,
+      "model": "????",
+      "serial": "???",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 69,
+      "model": "????",
+      "serial": "8642946",
+      "model_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ],
+      "serial_codepoints": [
+        "U+0038",
+        "U+0036",
+        "U+0034",
+        "U+0032",
+        "U+0039",
+        "U+0034",
+        "U+0036"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 70,
+      "model": "NISSAN / TOYOTA",
+      "serial": "???",
+      "model_codepoints": [
+        "U+004E",
+        "U+0049",
+        "U+0053",
+        "U+0053",
+        "U+0041",
+        "U+004E",
+        "U+0020",
+        "U+002F",
+        "U+0020",
+        "U+0054",
+        "U+004F",
+        "U+0059",
+        "U+004F",
+        "U+0054",
+        "U+0041"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    },
+    {
+      "sheet": "RAZNI",
+      "row": 85,
+      "model": "EMINOX",
+      "serial": "???",
+      "model_codepoints": [
+        "U+0045",
+        "U+004D",
+        "U+0049",
+        "U+004E",
+        "U+004F",
+        "U+0058"
+      ],
+      "serial_codepoints": [
+        "U+003F",
+        "U+003F",
+        "U+003F"
+      ]
+    }
+  ],
+  "non_ascii_rows": [
+    {
+      "sheet": "PSA",
+      "row": 105,
+      "model": "PEUGEOT",
+      "serial": "K 092",
+      "model_codepoints": [
+        "U+0050",
+        "U+0045",
+        "U+0055",
+        "U+0047",
+        "U+0045",
+        "U+004F",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+004B",
+        "U+00A0",
+        "U+0030",
+        "U+0039",
+        "U+0032"
+      ]
+    },
+    {
+      "sheet": "PSA",
+      "row": 106,
+      "model": "PEUGEOT",
+      "serial": "K 092",
+      "model_codepoints": [
+        "U+0050",
+        "U+0045",
+        "U+0055",
+        "U+0047",
+        "U+0045",
+        "U+004F",
+        "U+0054"
+      ],
+      "serial_codepoints": [
+        "U+004B",
+        "U+00A0",
+        "U+0030",
+        "U+0039",
+        "U+0032"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+[
+    {
+        "id": "01a0d92e-37bc-736a-8f9c-3549bb5bcfa1",
+        "car_group": "JAPAN",
+        "weight_kg": "0.400",
+        "pt_ppm": null,
+        "pd_ppm": "10600.0000",
+        "rh_ppm": "1654.0000",
+        "serial_code": "???",
+        "model": "SUBARU"
+    },
+    {
+        "id": "01a0d92e-3407-7304-baa1-0e73e44db48c",
+        "car_group": "JAPAN",
+        "weight_kg": "0.400",
+        "pt_ppm": "376.0000",
+        "pd_ppm": "3395.0000",
+        "rh_ppm": "893.0000",
+        "serial_code": "???",
+        "model": "HONDA"
+    },
+    {
+        "id": "01a0d92e-37c1-7222-a677-312d9b678caf",
+        "car_group": "JAPAN",
+        "weight_kg": "0.450",
+        "pt_ppm": "1500.0000",
+        "pd_ppm": "11.0000",
+        "rh_ppm": "1600.0000",
+        "serial_code": "???",
+        "model": "SUBARU"
+    },
+    {
+        "id": "01a0d92e-3756-70bc-8fff-f5e24ae91218",
+        "car_group": "JAPAN",
+        "weight_kg": "0.490",
+        "pt_ppm": "1738.0000",
+        "pd_ppm": null,
+        "rh_ppm": "310.0000",
+        "serial_code": "???",
+        "model": "SUBARU"
+    },
+    {
+        "id": "01a0d92e-372f-71d4-a4cd-3d40ef8e47ec",
+        "car_group": "JAPAN",
+        "weight_kg": "0.500",
+        "pt_ppm": null,
+        "pd_ppm": "1927.0000",
+        "rh_ppm": "401.0000",
+        "serial_code": "???",
+        "model": "NISSAN"
+    },
+    {
+        "id": "01a0d92e-3a81-73bd-ac2e-10f165a28000",
+        "car_group": "JAPAN",
+        "weight_kg": "0.560",
+        "pt_ppm": "1494.0000",
+        "pd_ppm": "1519.0000",
+        "rh_ppm": "385.0000",
+        "serial_code": "?",
+        "model": "TOYOTA"
+    },
+    {
+        "id": "01a0d92e-34f4-70e2-af93-a86c5f646166",
+        "car_group": "JAPAN",
+        "weight_kg": "0.560",
+        "pt_ppm": "2004.0000",
+        "pd_ppm": "2443.0000",
+        "rh_ppm": "486.0000",
+        "serial_code": "???",
+        "model": "MAZDA"
+    },
+    {
+        "id": "01a0d92e-3464-70c6-8f45-8519228649c6",
+        "car_group": "JAPAN",
+        "weight_kg": "0.560",
+        "pt_ppm": "3870.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "MAZDA"
+    },
+    {
+        "id": "01a0d92e-3a9f-7036-aacd-a9f3343010bc",
+        "car_group": "JAPAN",
+        "weight_kg": "0.600",
+        "pt_ppm": "601.0000",
+        "pd_ppm": "8322.0000",
+        "rh_ppm": "536.0000",
+        "serial_code": "????",
+        "model": "JAPANESE"
+    },
+    {
+        "id": "01a0d92e-3919-72f9-ac52-19e002932d6b",
+        "car_group": "JAPAN",
+        "weight_kg": "0.700",
+        "pt_ppm": "500.0000",
+        "pd_ppm": "769.0000",
+        "rh_ppm": "208.0000",
+        "serial_code": "???",
+        "model": "TOYOTA"
+    },
+    {
+        "id": "01a0d92e-3921-7049-bc63-bd2f6a1a4f23",
+        "car_group": "JAPAN",
+        "weight_kg": "0.700",
+        "pt_ppm": "518.0000",
+        "pd_ppm": "889.0000",
+        "rh_ppm": "247.0000",
+        "serial_code": "???",
+        "model": "TOYOTA"
+    },
+    {
+        "id": "01a0d92e-3314-7186-a063-af0ae47578de",
+        "car_group": "JAPAN",
+        "weight_kg": "0.700",
+        "pt_ppm": "1239.0000",
+        "pd_ppm": null,
+        "rh_ppm": "243.0000",
+        "serial_code": "????",
+        "model": "HONDA"
+    },
+    {
+        "id": "01a0d92e-3a9a-70b9-a3de-8d00d4bd8407",
+        "car_group": "JAPAN",
+        "weight_kg": "0.750",
+        "pt_ppm": "209.0000",
+        "pd_ppm": "9.0000",
+        "rh_ppm": null,
+        "serial_code": "????",
+        "model": "JAPANESE"
+    },
+    {
+        "id": "01a0d92e-3443-72ee-91b5-d1d45166e8ce",
+        "car_group": "JAPAN",
+        "weight_kg": "0.760",
+        "pt_ppm": "523.0000",
+        "pd_ppm": "1815.0000",
+        "rh_ppm": "321.0000",
+        "serial_code": "???",
+        "model": "ISUZU"
+    },
+    {
+        "id": "01a0d92e-372a-7221-b90e-11750ae8a28c",
+        "car_group": "JAPAN",
+        "weight_kg": "0.800",
+        "pt_ppm": "3238.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "NISSAN"
+    },
+    {
+        "id": "01a0d92e-33f5-72d5-b9fc-06efed58465e",
+        "car_group": "JAPAN",
+        "weight_kg": "0.820",
+        "pt_ppm": "1075.0000",
+        "pd_ppm": "3189.0000",
+        "rh_ppm": "318.0000",
+        "serial_code": "???",
+        "model": "HONDA"
+    },
+    {
+        "id": "01a0d92e-3735-72b9-aab6-b58b925c9b8c",
+        "car_group": "JAPAN",
+        "weight_kg": "0.860",
+        "pt_ppm": "5608.0000",
+        "pd_ppm": "1296.0000",
+        "rh_ppm": null,
+        "serial_code": "????",
+        "model": "NISSAN"
+    },
+    {
+        "id": "01a0d92e-33fa-73ea-a262-01a8f1d416ae",
+        "car_group": "JAPAN",
+        "weight_kg": "0.880",
+        "pt_ppm": "1052.0000",
+        "pd_ppm": "3137.0000",
+        "rh_ppm": "310.0000",
+        "serial_code": "???",
+        "model": "HONDA"
+    },
+    {
+        "id": "01a0d92e-3a8d-7098-90ed-6755b0813513",
+        "car_group": "JAPAN",
+        "weight_kg": "0.880",
+        "pt_ppm": "1723.0000",
+        "pd_ppm": null,
+        "rh_ppm": "453.0000",
+        "serial_code": "???",
+        "model": "TOYOTA"
+    },
+    {
+        "id": "01a0d92e-33ff-71d0-8765-27b9db68f6da",
+        "car_group": "JAPAN",
+        "weight_kg": "0.900",
+        "pt_ppm": "1036.0000",
+        "pd_ppm": "3401.0000",
+        "rh_ppm": "333.0000",
+        "serial_code": "???",
+        "model": "HONDA"
+    },
+    {
+        "id": "01a0d92e-38ef-73cb-a8dc-5d84e78e4fa9",
+        "car_group": "JAPAN",
+        "weight_kg": "1.300",
+        "pt_ppm": "196.0000",
+        "pd_ppm": "1013.0000",
+        "rh_ppm": "243.0000",
+        "serial_code": "???",
+        "model": "TOYOTA"
+    },
+    {
+        "id": "01a0d92e-345f-70d7-a64a-c1b408556193",
+        "car_group": "JAPAN",
+        "weight_kg": "1.300",
+        "pt_ppm": "1338.0000",
+        "pd_ppm": "3560.0000",
+        "rh_ppm": "300.0000",
+        "serial_code": "???",
+        "model": "MAZDA"
+    },
+    {
+        "id": "01a0d92e-3522-7060-a4fe-70d429aefc84",
+        "car_group": "JAPAN",
+        "weight_kg": "1.300",
+        "pt_ppm": "2645.0000",
+        "pd_ppm": "36.0000",
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "MAZDA_6?"
+    },
+    {
+        "id": "01a0d92e-3aa4-7384-b9f8-09675f627c22",
+        "car_group": "JAPAN",
+        "weight_kg": "1.500",
+        "pt_ppm": "1122.0000",
+        "pd_ppm": "20.0000",
+        "rh_ppm": null,
+        "serial_code": "????",
+        "model": "JAPANESE"
+    },
+    {
+        "id": "01a0d92e-34f9-7077-8ead-68c437b35716",
+        "car_group": "JAPAN",
+        "weight_kg": "1.500",
+        "pt_ppm": "1346.0000",
+        "pd_ppm": "1095.0000",
+        "rh_ppm": "644.0000",
+        "serial_code": "???",
+        "model": "MAZDA"
+    },
+    {
+        "id": "01a0d92e-345b-7165-8ae3-6fc69c359c22",
+        "car_group": "JAPAN",
+        "weight_kg": "1.600",
+        "pt_ppm": "254.0000",
+        "pd_ppm": "7488.0000",
+        "rh_ppm": "474.0000",
+        "serial_code": "???",
+        "model": "MAZDA"
+    },
+    {
+        "id": "01a0d92e-373a-735a-8d84-baf920428168",
+        "car_group": "JAPAN",
+        "weight_kg": "2.360",
+        "pt_ppm": "187.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "????",
+        "model": "NISSAN"
+    },
+    {
+        "id": "01a0d92e-4766-7155-b0d7-ac3ae720c544",
+        "car_group": "RAZNI",
+        "weight_kg": "0.300",
+        "pt_ppm": null,
+        "pd_ppm": "8700.0000",
+        "rh_ppm": "900.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4779-7213-9daa-1ec4ea7cc36f",
+        "car_group": "RAZNI",
+        "weight_kg": "0.340",
+        "pt_ppm": "2011.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4769-732d-93ea-736f829779eb",
+        "car_group": "RAZNI",
+        "weight_kg": "0.380",
+        "pt_ppm": null,
+        "pd_ppm": "8090.0000",
+        "rh_ppm": "789.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-476c-7272-9be0-c194f287c4bf",
+        "car_group": "RAZNI",
+        "weight_kg": "0.400",
+        "pt_ppm": null,
+        "pd_ppm": "7890.0000",
+        "rh_ppm": "770.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4787-71df-81fd-f1cfe1364bc4",
+        "car_group": "RAZNI",
+        "weight_kg": "0.520",
+        "pt_ppm": "2583.0000",
+        "pd_ppm": "2188.0000",
+        "rh_ppm": "642.0000",
+        "serial_code": "???",
+        "model": "NISSAN \/ TOYOTA"
+    },
+    {
+        "id": "01a0d92e-475c-7092-af99-5e3706431293",
+        "car_group": "RAZNI",
+        "weight_kg": "0.660",
+        "pt_ppm": null,
+        "pd_ppm": "4711.0000",
+        "rh_ppm": "259.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-475f-7068-be0d-2f6f5c5751e8",
+        "car_group": "RAZNI",
+        "weight_kg": "0.680",
+        "pt_ppm": null,
+        "pd_ppm": "4696.0000",
+        "rh_ppm": "269.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4761-71f5-8789-5acaa41ba3e9",
+        "car_group": "RAZNI",
+        "weight_kg": "0.680",
+        "pt_ppm": null,
+        "pd_ppm": "4916.0000",
+        "rh_ppm": "286.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4783-72df-b17a-3620ac591859",
+        "car_group": "RAZNI",
+        "weight_kg": "0.780",
+        "pt_ppm": "1491.0000",
+        "pd_ppm": "1557.0000",
+        "rh_ppm": "1105.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-476e-73ce-a06b-4cb1a01d022f",
+        "car_group": "RAZNI",
+        "weight_kg": "0.890",
+        "pt_ppm": "2124.0000",
+        "pd_ppm": "14.0000",
+        "rh_ppm": "451.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4763-727b-b353-d2a1fcde8a7c",
+        "car_group": "RAZNI",
+        "weight_kg": "0.900",
+        "pt_ppm": "5341.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-4771-7249-955c-0a8be81806bd",
+        "car_group": "RAZNI",
+        "weight_kg": "1.140",
+        "pt_ppm": "291.0000",
+        "pd_ppm": "7379.0000",
+        "rh_ppm": "451.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-477b-73d4-a2d3-c04fe41fb063",
+        "car_group": "RAZNI",
+        "weight_kg": "1.160",
+        "pt_ppm": "1945.0000",
+        "pd_ppm": null,
+        "rh_ppm": "435.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-477f-73b8-b2a1-da979b288ec6",
+        "car_group": "RAZNI",
+        "weight_kg": "1.360",
+        "pt_ppm": "135.0000",
+        "pd_ppm": "2809.0000",
+        "rh_ppm": "129.0000",
+        "serial_code": "???",
+        "model": "????"
+    },
+    {
+        "id": "01a0d92e-479b-727b-9a78-21170cc2eb57",
+        "car_group": "RAZNI",
+        "weight_kg": "2.480",
+        "pt_ppm": "4594.0000",
+        "pd_ppm": null,
+        "rh_ppm": null,
+        "serial_code": "???",
+        "model": "EMINOX"
+    },
+    {
+        "id": "01a0d92e-3304-713e-aa18-dc244bed3acb",
+        "car_group": "RENAULT",
+        "weight_kg": "1.600",
+        "pt_ppm": null,
+        "pd_ppm": "2784.0000",
+        "rh_ppm": "376.0000",
+        "serial_code": "???",
+        "model": "RENAULT"
+    },
+    {
+        "id": "01a0d92e-455f-710c-aabf-ebfe0d64edb8",
+        "car_group": "SWEDEN",
+        "weight_kg": "1.400",
+        "pt_ppm": "1957.0000",
+        "pd_ppm": null,
+        "rh_ppm": "387.0000",
+        "serial_code": "????",
+        "model": "SAAB"
+    }
+]

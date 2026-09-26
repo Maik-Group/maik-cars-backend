@@ -6,6 +6,7 @@ use App\Http\Controllers\API\CalculatorController;
 use App\Http\Controllers\API\CarGroupController;
 use App\Http\Controllers\API\HomeController;
 use App\Http\Controllers\API\ItemController;
+use App\Http\Controllers\API\ItemImageSubmissionController;
 use App\Http\Controllers\API\MarketChartController;
 use App\Http\Controllers\API\MarketNotificationController;
 use App\Http\Controllers\API\MetalsController;
@@ -34,9 +35,6 @@ Route::get('/car_groups', [CarGroupController::class, 'index'])->name('car-group
 
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
 Route::get('/items/codes', [ItemController::class, 'codes'])->name('items.codes');
-Route::post('/items/images/by-code', [PublicItemImageController::class, 'updateByCode'])
-    ->middleware('throttle:10,1')
-    ->name('items.images.update-by-code');
 Route::post('/items/images/sync-by-media-range', [PublicItemImageController::class, 'syncByMediaRange'])
     ->middleware('throttle:10,1')
     ->name('items.images.sync-by-media-range');
@@ -67,6 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/saved-items', [SavedItemController::class, 'index'])->name('saved-items.index');
     Route::post('/saved-items', [SavedItemController::class, 'store'])->name('saved-items.store');
+    Route::post('/items/{item}/image-submissions', [ItemImageSubmissionController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('items.image-submissions.store');
     Route::delete('/saved-items/{item}', [SavedItemController::class, 'destroy'])->name('saved-items.destroy');
 
     Route::post('/imports', [ImportController::class, 'store']);

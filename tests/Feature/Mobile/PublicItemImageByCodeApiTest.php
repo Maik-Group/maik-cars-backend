@@ -4,11 +4,9 @@ use App\Models\CarGroup;
 use App\Models\ExtraCode;
 use App\Models\Item;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-use function Pest\Laravel\post;
 use function Pest\Laravel\postJson;
 
 function publicItemImageByCodeAttachImage(Item $item, int $gray = 220): Media
@@ -36,82 +34,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Storage::fake('public');
-});
-
-test('public endpoint replaces images for every item matching the normalized serial or extra code', function (): void {
-    $group = CarGroup::factory()->create();
-
-    $serialMatch = Item::factory()->create([
-        'car_group_id' => $group->id,
-        'serial_code' => 'GM10-ABC',
-    ]);
-    publicItemImageByCodeAttachImage($serialMatch);
-
-    $extraCodeMatch = Item::factory()->create([
-        'car_group_id' => $group->id,
-        'serial_code' => 'OTHER-001',
-    ]);
-    ExtraCode::factory()->create([
-        'item_id' => $extraCodeMatch->id,
-        'code' => 'GM10.ABC',
-    ]);
-    publicItemImageByCodeAttachImage($extraCodeMatch);
-
-    $unrelated = Item::factory()->create([
-        'car_group_id' => $group->id,
-        'serial_code' => 'GM10-ABC-2',
-    ]);
-    publicItemImageByCodeAttachImage($unrelated);
-    $unrelatedMediaId = $unrelated->getFirstMedia('images')?->getKey();
-
-    $response = post('/api/items/images/by-code', [
-        'code' => 'gm10 abc',
-        'image' => UploadedFile::fake()->image('replacement.jpg', 900, 700),
-    ]);
-
-    $response->assertOk();
-    $response->assertJsonPath('normalized_code', 'GM10ABC');
-    $response->assertJsonPath('updated_count', 2);
-
-    foreach ([$serialMatch, $extraCodeMatch] as $item) {
-        $item->refresh();
-        $media = $item->getFirstMedia('images');
-
-        expect($media)->not->toBeNull();
-        expect($media->generated_conversions)->toMatchArray([
-            'thumb' => true,
-            'card' => true,
-            'detail' => true,
-        ]);
-        expect($item->image_url)->not->toBeNull();
-        expect($item->image_thumb_url)->not->toBeNull();
-        expect($item->image_detail_url)->not->toBeNull();
-    }
-
-    $unrelated->refresh();
-    expect($unrelated->getFirstMedia('images')?->getKey())->toBe($unrelatedMediaId);
-});
-
-test('public endpoint returns not found when no item has the provided code', function (): void {
-    $response = post('/api/items/images/by-code', [
-        'code' => 'DOES-NOT-EXIST',
-        'image' => UploadedFile::fake()->image('replacement.jpg', 400, 400),
-    ]);
-
-    $response->assertNotFound();
-    $response->assertJsonPath('updated_count', 0);
-});
-
-test('public endpoint validates the image upload', function (): void {
-    $response = post('/api/items/images/by-code', [
-        'code' => 'GM10-ABC',
-        'image' => UploadedFile::fake()->create('not-an-image.txt', 10, 'text/plain'),
-    ], [
-        'Accept' => 'application/json',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors('image');
 });
 
 test('public media range endpoint uses accepted images to update matching items one by one', function (): void {
@@ -160,13 +82,13 @@ test('public media range endpoint uses accepted images to update matching items 
     ]);
 
     $response->assertOk();
-    $response->assertJsonPath('source_count', 2);
-    $response->assertJsonPath('processed_source_count', 2);
-    $response->assertJsonPath('updated_count', 2);
-    $response->assertJsonPath('results.0.media_id', $firstAcceptedMedia->getKey());
-    $response->assertJsonPath('results.0.updated_count', 2);
-    $response->assertJsonPath('results.1.media_id', $secondAcceptedMedia->getKey());
-    $response->assertJsonPath('results.1.updated_count', 0);
+    $response->assertJsonPath('sourceCount', 2);
+    $response->assertJsonPath('processedSourceCount', 2);
+    $response->assertJsonPath('updatedCount', 2);
+    $response->assertJsonPath('results.0.mediaId', $firstAcceptedMedia->getKey());
+    $response->assertJsonPath('results.0.updatedCount', 2);
+    $response->assertJsonPath('results.1.mediaId', $secondAcceptedMedia->getKey());
+    $response->assertJsonPath('results.1.updatedCount', 0);
 
     foreach ([$serialTarget, $extraCodeTarget] as $target) {
         $target->refresh();
@@ -204,8 +126,8 @@ test('public media range endpoint returns not found when the range has no accept
     ]);
 
     $response->assertNotFound();
-    $response->assertJsonPath('source_count', 0);
-    $response->assertJsonPath('updated_count', 0);
+    $response->assertJsonPath('sourceCount', 0);
+    $response->assertJsonPath('updatedCount', 0);
 });
 
 test('public media range endpoint validates that to is not before from', function (): void {
