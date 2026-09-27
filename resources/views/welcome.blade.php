@@ -6,8 +6,14 @@
     <meta name="theme-color" content="#fbf8f5">
     <meta name="description" content="Maik Cat — precision tools for catalytic converter professionals.">
     <title>Maik Cat</title>
-    <link rel="stylesheet" href="{{ asset('css/portfolio.css') }}">
-    <script defer src="{{ asset('js/portfolio.js') }}"></script>
+    <link rel="icon" href="{{ asset('images/favicon/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon/favicon-16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ asset('images/favicon/favicon-48.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('images/favicon/favicon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/favicon/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/portfolio.css') }}?v={{ @filemtime(public_path('css/portfolio.css')) }}">
+    <script defer src="{{ asset('js/portfolio.js') }}?v={{ @filemtime(public_path('js/portfolio.js')) }}"></script>
 </head>
 <body>
 @php
