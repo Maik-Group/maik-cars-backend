@@ -13,15 +13,9 @@ class ItemInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Filter identification')
-                ->description('DPF classification and the independently verified filter reference.')
-                ->columns(['default' => 1, 'md' => 2])
+            Section::make('Filter reference')
+                ->description('The reference shared with Item Filter Mappings.')
                 ->schema([
-                    TextEntry::make('is_dpf')
-                        ->label('Component classification')
-                        ->formatStateUsing(fn (bool $state): string => $state ? 'DPF' : 'Not marked as DPF')
-                        ->badge()
-                        ->color(fn (bool $state): string => $state ? 'warning' : 'gray'),
                     TextEntry::make('filter_reference_code')
                         ->label('Filter reference code')
                         ->placeholder('Not specified')

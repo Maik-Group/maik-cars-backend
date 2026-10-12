@@ -32,7 +32,6 @@ class Item extends Model implements HasMedia
         'car_group_id',
         'model',
         'serial_code',
-        'is_dpf',
         'filter_reference_code',
         'normalized_serial',
         'assay_fingerprint',
@@ -48,7 +47,6 @@ class Item extends Model implements HasMedia
     ];
 
     protected $casts = [
-        'is_dpf' => 'boolean',
         'weight_kg' => 'float',
         'pt_ppm' => 'float',
         'pd_ppm' => 'float',

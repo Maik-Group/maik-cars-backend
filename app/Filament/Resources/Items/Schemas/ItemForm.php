@@ -12,7 +12,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
@@ -50,15 +49,10 @@ class ItemForm
                             }),
                     ])
                     ->columnSpanFull(),
-                Section::make('Filter identification')
-                    ->description('Keep the DPF classification and filter reference separate from the catalog serial and pricing filter mappings.')
-                    ->columns(['default' => 1, 'md' => 2])
+                Section::make('Filter reference')
+                    ->description('This value is also used by Item Filter Mappings.')
                     ->columnSpanFull()
                     ->schema([
-                        Toggle::make('is_dpf')
-                            ->label('DPF (Diesel Particulate Filter)')
-                            ->helperText('Enable only when this item has been verified as a DPF. Combined assemblies require individual verification.')
-                            ->default(false),
                         TextInput::make('filter_reference_code')
                             ->label('Filter reference code')
                             ->maxLength(150)

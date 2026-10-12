@@ -16,7 +16,6 @@ class ItemFilterMappingFactory extends Factory
         return [
             'item_id' => Item::factory(),
             'filter_item_id' => null,
-            'filter_serial' => null,
             'detection_method' => 'manual',
             'confidence' => 'low',
             'status' => ItemFilterMapping::STATUS_NEEDS_REVIEW,

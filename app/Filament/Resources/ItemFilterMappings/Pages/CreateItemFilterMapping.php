@@ -24,7 +24,7 @@ class CreateItemFilterMapping extends CreateRecord
         $data['approved_by'] = auth()->id();
         $data['approved_at'] = now();
 
-        if (filled($data['filter_item_id'] ?? null)) {
+        if (blank($data['filter_serial'] ?? null) && filled($data['filter_item_id'] ?? null)) {
             $data['filter_serial'] = Item::query()
                 ->whereKey($data['filter_item_id'])
                 ->value('serial_code');

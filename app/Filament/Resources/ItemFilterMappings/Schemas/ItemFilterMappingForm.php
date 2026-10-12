@@ -11,6 +11,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class ItemFilterMappingForm
@@ -28,6 +29,7 @@ class ItemFilterMappingForm
                         ->preload(false)
                         ->required()
                         ->live()
+                        ->afterStateUpdated(fn (?string $state, Set $set) => $set('filter_serial', $state ? Item::query()->whereKey($state)->value('filter_reference_code') : null))
                         ->label(__('admin.ui.pricing_review.catalyst_product'))
                         ->helperText(__('admin.ui.pricing_review.catalyst_help')),
                     Select::make('filter_item_id')
@@ -38,6 +40,15 @@ class ItemFilterMappingForm
                         ->live()
                         ->label(__('admin.ui.pricing_review.matching_filter'))
                         ->helperText(__('admin.ui.pricing_review.matching_filter_help')),
+                    TextInput::make('filter_serial')
+                        ->label(__('admin.ui.pricing_review.filter_reference'))
+                        ->maxLength(150)
+                        ->afterStateHydrated(function (TextInput $component, ?ItemFilterMapping $record): void {
+                            if ($record instanceof ItemFilterMapping) {
+                                $component->state($record->item?->filter_reference_code);
+                            }
+                        })
+                        ->helperText('This edits the same reference stored on the item, not a separate mapping field.'),
                     TextInput::make('filter_weight_override')
                         ->label(__('admin.ui.pricing_review.corrected_filter_weight'))
                         ->numeric()

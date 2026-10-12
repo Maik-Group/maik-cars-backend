@@ -50,7 +50,8 @@ test('excel pricing reconciliation moves KT 1200 out of component weight review'
 
     expect($mapping->status)->toBe(ItemFilterMapping::STATUS_NEEDS_REVIEW)
         ->and($mapping->filter_item_id)->toBeNull()
-        ->and($mapping->filter_serial)->toBeNull()
+        ->and($mapping->filter_serial)->toBe('KT 1200')
+        ->and($item->filter_reference_code)->toBe('KT 1200')
         ->and($mapping->filter_weight_override)->toBeNull()
         ->and($mapping->detection_method)->toBe('excel_source_verification')
         ->and($mapping->evidence['pricing_review']['type'])->toBe('assay_source')

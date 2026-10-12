@@ -46,7 +46,7 @@ class ItemFilterMappingsTable
                 TextColumn::make('item.weight_kg')
                     ->label(__('admin.ui.pricing_review.product_weight'))
                     ->formatStateUsing(fn ($state): string => number_format((float) $state, 3).' kg'),
-                TextColumn::make('filter_serial')
+                TextColumn::make('item.filter_reference_code')
                     ->label(__('admin.ui.pricing_review.filter_reference'))
                     ->searchable()
                     ->placeholder(__('admin.ui.pricing_review.filter_reference_missing')),

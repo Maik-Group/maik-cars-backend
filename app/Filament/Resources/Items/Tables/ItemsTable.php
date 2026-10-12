@@ -46,12 +46,6 @@ class ItemsTable
                     })
                     ->sortable()
                     ->weight('bold'),
-                TextColumn::make('dpf_flag')
-                    ->label('DPF')
-                    ->getStateUsing(fn (Item $record): ?string => $record->is_dpf ? 'DPF' : null)
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—'),
                 TextColumn::make('filter_reference_code')
                     ->label('Filter reference')
                     ->searchable()
@@ -128,8 +122,6 @@ class ItemsTable
                             default => $query,
                         };
                     }),
-                TernaryFilter::make('is_dpf')
-                    ->label('DPF'),
                 TernaryFilter::make('has_image')
                     ->label(__('admin.ui.items.has_image'))
                     ->queries(

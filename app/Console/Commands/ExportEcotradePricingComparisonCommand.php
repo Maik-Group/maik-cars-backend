@@ -117,7 +117,7 @@ class ExportEcotradePricingComparisonCommand extends Command
                     (string) $item->serial_code,
                     $mapping?->status ?? '',
                     (float) $item->weight_kg,
-                    $mapping?->filter_serial ?? '',
+                    $item->filter_reference_code ?? '',
                     $filterWeight,
                     $netWeight,
                     $currentPrice,
