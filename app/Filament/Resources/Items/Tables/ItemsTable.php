@@ -10,6 +10,7 @@ use App\Services\Pricing\PricingReviewService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -45,6 +46,17 @@ class ItemsTable
                     })
                     ->sortable()
                     ->weight('bold'),
+                TextColumn::make('dpf_flag')
+                    ->label('DPF')
+                    ->getStateUsing(fn (Item $record): ?string => $record->is_dpf ? 'DPF' : null)
+                    ->badge()
+                    ->color('warning')
+                    ->placeholder('—'),
+                TextColumn::make('filter_reference_code')
+                    ->label('Filter reference')
+                    ->searchable()
+                    ->copyable()
+                    ->placeholder('—'),
                 TextColumn::make('model')
                     ->label(__('admin.ui.items.model'))
                     ->searchable()
@@ -116,6 +128,8 @@ class ItemsTable
                             default => $query,
                         };
                     }),
+                TernaryFilter::make('is_dpf')
+                    ->label('DPF'),
                 TernaryFilter::make('has_image')
                     ->label(__('admin.ui.items.has_image'))
                     ->queries(
@@ -125,6 +139,7 @@ class ItemsTable
                     ),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([

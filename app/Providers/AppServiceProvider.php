@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ItemImageSubmission;
 use App\Models\User;
 use App\Notifications\Channels\FcmChannel;
 use App\Services\Mobile\ItemApiResponseService;
@@ -9,11 +10,13 @@ use App\Services\Mobile\ItemApiSettingsService;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Mobile\ItemPriceSettingsService;
 use App\Services\Mobile\MetalsSpotService;
+use App\Support\MediaLibrary\ImageSubmissionPathGenerator;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Factory;
+use Spatie\MediaLibrary\Support\PathGenerator\PathGeneratorFactory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        PathGeneratorFactory::setCustomPathGenerators(ItemImageSubmission::class, ImageSubmissionPathGenerator::class);
+
         $this->app->make(ChannelManager::class)->extend('fcm', function ($app): FcmChannel {
             return $app->make(FcmChannel::class);
         });
