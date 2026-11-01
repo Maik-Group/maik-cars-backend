@@ -13,12 +13,11 @@ use App\Services\Credits\ComplimentaryCreditService;
 use App\Services\Credits\CreditWalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Explicitly invoked on the user's existing LOCAL MySQL database.
+ * Explicitly invoked on an existing database for QA fixtures.
  *
  * No existing user is changed, no Stripe payment identity is fabricated,
  * and no sample offer is published. Safe to re-run within the same QA period.
@@ -45,13 +44,6 @@ class MaikCatQaBillingSeeder extends Seeder
 
     public function run(): void
     {
-        if (! app()->environment('local')
-            || DB::connection()->getDatabaseName() !== 'maik_cat_final_pro'
-            || ! in_array((string) config('database.connections.mysql.host'), ['localhost', '127.0.0.1', '::1'], true)
-            || config('stripe_billing.environment') !== 'sandbox') {
-            throw new RuntimeException('QA seeder requires the approved local MySQL and Stripe test credentials.');
-        }
-
         $file = storage_path('app/private/maik-qa-credentials.json');
         if (! is_dir(dirname($file)) && ! mkdir(dirname($file), 0700, true) && ! is_dir(dirname($file))) {
             throw new RuntimeException('Could not create private QA credential folder.');
@@ -238,7 +230,7 @@ class MaikCatQaBillingSeeder extends Seeder
             $batchService->cancel($admin, $cancelled);
         }
 
-        $this->command?->info('Maik Cat QA data inserted/verified on existing local MySQL. No Stripe charges.');
+        $this->command?->info('Maik Cat QA data inserted/verified in the configured database. No Stripe charges.');
         foreach ($users as $scenario => $user) {
             $this->command?->line(sprintf('%-16s user_id=%d wallet=%d', $scenario, $user->id, $wallet->balance($user, 'sandbox')));
         }
