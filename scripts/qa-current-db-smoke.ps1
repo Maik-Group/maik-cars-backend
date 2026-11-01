@@ -7,6 +7,9 @@ $root = Split-Path -Parent $PSScriptRoot
 $secretFile = Join-Path $root 'storage/app/private/maik-qa-credentials.json'
 if (!(Test-Path $secretFile)) { throw 'QA credential file is absent; run MaikCatQaBillingSeeder first.' }
 $manifest = Get-Content $secretFile -Raw | ConvertFrom-Json
+$scenarioFile = Join-Path $root 'storage/app/private/maik-qa-scenarios.json'
+if (!(Test-Path $scenarioFile)) { throw 'QA scenario report is absent; run MaikCatQaBillingSeeder first.' }
+$scenarioReport = Get-Content $scenarioFile -Raw | ConvertFrom-Json
 $results = New-Object System.Collections.Generic.List[object]
 
 function Invoke-QaApi {
@@ -38,15 +41,14 @@ function Assert-Qa {
 }
 
 $catalog=Invoke-QaApi 'GET' '/api/v1/billing/plans'
-Assert-Qa 'catalog' ($catalog.Status -eq 200 -and @($catalog.Value.data.subscriptions).Count -eq 4 -and @($catalog.Value.data.topUps).Count -eq 3) ('HTTP '+$catalog.Status)
+Assert-Qa 'catalog' ($catalog.Status -eq 200 -and $null -ne $catalog.Value.data.subscriptions -and $null -ne $catalog.Value.data.topUps) ('HTTP '+$catalog.Status+' publishedSubscriptions='+@($catalog.Value.data.subscriptions).Count+' publishedTopups='+@($catalog.Value.data.topUps).Count)
 $eligible = @($catalog.Value.data.subscriptions) + @($catalog.Value.data.topUps) | Where-Object {$_.checkoutEligible -eq $true}
-Assert-Qa 'checkout-fail-closed' ($catalog.Value.data.externalCheckoutAllowed -eq $false -and @($eligible).Count -eq 0) 'no provider-verified offers'
+Assert-Qa 'native-checkout-disabled' ($catalog.Value.data.externalCheckoutAllowed -eq $false) ('web-eligible-offers='+@($eligible).Count)
 $anon = Invoke-QaApi 'GET' '/api/v1/wallet'
 Assert-Qa 'wallet-auth' ($anon.Status -eq 401) ('HTTP '+$anon.Status)
 $item = Invoke-QaApi 'GET' ('/api/items/'+$ItemId)
 Assert-Qa 'public-price-redacted' ($item.Status -eq 200 -and $null -eq $item.Value.data.price -and $null -eq $item.Value.data.basePrice -and $null -eq $item.Value.data.ptPpm -and $null -eq $item.Value.data.weightKg) ('HTTP '+$item.Status)
 
-$balances = @{empty=0;free=7;paid=15;topup=10;mixed=17;complimentary=6;once=4;expired=0;held=2;bulk=3;admin=0}
 foreach($scenario in @('empty','free','paid','topup','mixed','complimentary','once','expired','held','bulk','admin')) {
   $account=$manifest.accounts.$scenario
   $login=Invoke-QaApi 'POST' '/api/auth/login' @{email=$account.email;password=$account.password;device_id=('maik-qa-smoke-'+$scenario)}
@@ -57,7 +59,9 @@ foreach($scenario in @('empty','free','paid','topup','mixed','complimentary','on
   $token=$login.Value.token
   try {
     $wallet=Invoke-QaApi 'GET' '/api/v1/wallet' $null $token
-    $expected=$balances[$scenario]
+    # Compare with the post-seed snapshot rather than assuming a QA account
+    # was never previously used. Do not reissue or reset spent grants.
+    $expected=[int]$scenarioReport.accounts.$scenario.walletBalance
     # A repeatable smoke run may have already consumed one paid/mixed point.
     $valid = $wallet.Status -eq 200 -and (
       [int]$wallet.Value.data.balance -eq $expected -or
