@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Explicitly invoked on an existing database for QA fixtures.
@@ -44,6 +45,20 @@ class MaikCatQaBillingSeeder extends Seeder
 
     public function run(): void
     {
+        // These fixtures always belong to sandbox billing, even when the
+        // application's Stripe credentials use another environment.
+        $originalEnvironment = config('stripe_billing.environment');
+        config()->set('stripe_billing.environment', 'sandbox');
+
+        try {
+            $this->seedSandboxFixtures();
+        } finally {
+            config()->set('stripe_billing.environment', $originalEnvironment);
+        }
+    }
+
+    private function seedSandboxFixtures(): void
+    {
         $file = storage_path('app/private/maik-qa-credentials.json');
         if (! is_dir(dirname($file)) && ! mkdir(dirname($file), 0700, true) && ! is_dir(dirname($file))) {
             throw new RuntimeException('Could not create private QA credential folder.');
@@ -55,7 +70,7 @@ class MaikCatQaBillingSeeder extends Seeder
                 throw new RuntimeException('A QA email already exists without its original credential manifest.');
             }
             $known = [
-                'purpose' => 'Maik Cat local sandbox QA accounts only',
+                'purpose' => 'Maik Cat sandbox QA accounts only',
                 'createdAt' => CarbonImmutable::now('UTC')->toIso8601String(),
                 'accounts' => [],
             ];
@@ -208,26 +223,41 @@ class MaikCatQaBillingSeeder extends Seeder
         // batches or credit an already completed recipient twice.
         $batchService = app(AdminGrantBatchService::class);
         $admin = $users['admin'];
-        $batch = AdminGrantBatch::query()->where('actor_id', $admin->id)
-            ->where('environment', 'sandbox')->where('audience', 'selected')
-            ->where('credits', 3)->first();
-        if (! $batch) {
-            $batch = $batchService->preview($admin, 'selected', [$users['bulk']->id], 3, $freeExpiry);
+        // A server may have an older admin role lacking this new permission.
+        // Grant it only to the QA actor during fixture creation, without
+        // changing the permissions of real admins or bypassing authorization.
+        $temporaryPermission = ! $admin->can('grant_bulk_credits');
+        if ($temporaryPermission) {
+            Permission::findOrCreate('grant_bulk_credits', 'web');
+            $admin->givePermissionTo('grant_bulk_credits');
         }
-        if ($batch->status === 'preview') {
-            $batchService->confirm($admin, $batch, $batch->snapshot_hash);
-        }
-        if ($batch->fresh()->status === 'running') {
-            $batchService->processChunk($batch->id);
-        }
-        if ($batch->fresh()->status !== 'completed') {
-            throw new RuntimeException('QA admin bulk grant is not completed: '.$batch->fresh()->status);
-        }
-        if (! AdminGrantBatch::query()->where('actor_id', $admin->id)
-            ->where('environment', 'sandbox')->where('audience', 'selected')
-            ->where('credits', 99)->exists()) {
-            $cancelled = $batchService->preview($admin, 'selected', [$users['bulk']->id], 99, $freeExpiry);
-            $batchService->cancel($admin, $cancelled);
+
+        try {
+            $batch = AdminGrantBatch::query()->where('actor_id', $admin->id)
+                ->where('environment', 'sandbox')->where('audience', 'selected')
+                ->where('credits', 3)->first();
+            if (! $batch) {
+                $batch = $batchService->preview($admin, 'selected', [$users['bulk']->id], 3, $freeExpiry);
+            }
+            if ($batch->status === 'preview') {
+                $batchService->confirm($admin, $batch, $batch->snapshot_hash);
+            }
+            if ($batch->fresh()->status === 'running') {
+                $batchService->processChunk($batch->id);
+            }
+            if ($batch->fresh()->status !== 'completed') {
+                throw new RuntimeException('QA admin bulk grant is not completed: '.$batch->fresh()->status);
+            }
+            if (! AdminGrantBatch::query()->where('actor_id', $admin->id)
+                ->where('environment', 'sandbox')->where('audience', 'selected')
+                ->where('credits', 99)->exists()) {
+                $cancelled = $batchService->preview($admin, 'selected', [$users['bulk']->id], 99, $freeExpiry);
+                $batchService->cancel($admin, $cancelled);
+            }
+        } finally {
+            if ($temporaryPermission) {
+                $admin->revokePermissionTo('grant_bulk_credits');
+            }
         }
 
         $this->command?->info('Maik Cat QA data inserted/verified in the configured database. No Stripe charges.');
