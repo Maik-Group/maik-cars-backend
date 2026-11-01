@@ -3,6 +3,7 @@
 use App\Models\AdminGrantBatch;
 use App\Models\CreditGrant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Seeders\MaikCatQaBillingSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,7 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
     app()->useStoragePath($storage);
     Queue::fake();
     config()->set('stripe_billing.environment', 'production');
+    $this->travelTo(CarbonImmutable::parse('2026-11-01 12:00:00', 'UTC'));
 
     try {
         $this->seed(MaikCatQaBillingSeeder::class);
@@ -41,14 +43,21 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
             ->and(CreditGrant::query()->where('environment', 'sandbox')->where('user_id', $bulk->id)->sum('credits'))->toBe(3)
             ->and(is_file($storage.'/app/private/maik-qa-credentials.json'))->toBeTrue();
 
+        $dueGrant = CreditGrant::query()->where('source_key', 'qa-local:202611:renewal_due:paid_cycle')
+            ->where('environment', 'sandbox')->sole();
+        $originalDue = $dueGrant->expires_at->getTimestamp();
         $grantCount = CreditGrant::query()->count();
         $batchCount = AdminGrantBatch::query()->count();
+        // This used to throw "Conflicting credit grant identity" on the server.
+        $this->travel(45)->minutes();
         $this->seed(MaikCatQaBillingSeeder::class);
         expect(CreditGrant::query()->count())->toBe($grantCount)
+            ->and($dueGrant->fresh()->expires_at->getTimestamp())->toBe($originalDue)
             ->and(AdminGrantBatch::query()->count())->toBe($batchCount)
             ->and($qaAdmin->fresh()->can('grant_bulk_credits'))->toBeFalse()
             ->and(config('stripe_billing.environment'))->toBe('production');
     } finally {
+        $this->travelBack();
         app()->useStoragePath($originalStorage);
         File::deleteDirectory($storage);
     }

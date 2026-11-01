@@ -199,7 +199,13 @@ class MaikCatQaBillingSeeder extends Seeder
         $wallet->grant($users['renewed'], 'paid_cycle', 15,
             'qa-local:'.$month->subMonthNoOverflow()->format('Ym').':renewed:previous_cycle',
             $month->subDay(), 'sandbox');
-        $credit('renewal_due', 'paid_cycle', 2, CarbonImmutable::now('UTC')->addDays(2));
+        // Keep the first run's rolling due date for the same monthly source
+        // key. Recomputing now() on retry changes its expiry and correctly
+        // trips CreditWalletService's immutable grant identity protection.
+        $renewalDueKey = 'qa-local:'.$monthKey.':renewal_due:paid_cycle';
+        $existingRenewalDue = CreditGrant::query()->where('source_type', 'paid_cycle')
+            ->where('source_key', $renewalDueKey)->where('environment', 'sandbox')->first();
+        $credit('renewal_due', 'paid_cycle', 2, $existingRenewalDue?->expires_at ?? CarbonImmutable::now('UTC')->addDays(2));
         $credit('expired_only', 'paid_cycle', 8, $month->subDay());
         $credit('topup_only', 'purchased_topup', 20);
 
