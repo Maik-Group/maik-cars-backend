@@ -55,8 +55,10 @@ class StripeBillingController extends Controller
         $environment = $billing->environment();
         $subscription = BillingSubscription::query()->where('user_id', $user->getKey())
             ->where('environment', $environment)->latest('id')->first();
+        $planName = $subscription ? BillingPlanPrice::query()->whereKey($subscription->billing_plan_price_id)
+            ->where('environment', $environment)->first() : null;
         $comps = Schema::hasTable('complimentary_allocations')
-            ? DB::table('complimentary_allocations')->where('user_id', $user->getKey())->orderByDesc('id')
+            ? DB::table('complimentary_allocations')->where('user_id', $user->getKey())->where('environment', $environment)->orderByDesc('id')
                 ->get()->map(fn (object $entitlement): array => [
                     'id' => $entitlement->id, 'startsAt' => $entitlement->starts_at,
                     'endsAt' => $entitlement->ends_at, 'revokedAt' => $entitlement->revoked_at,
@@ -70,6 +72,8 @@ class StripeBillingController extends Controller
             'paidSubscription' => $subscription ? [
                 'status' => $subscription->status,
                 'priceVersionId' => $subscription->billing_plan_price_id,
+                'planName' => $planName?->name,
+                'durationMonths' => $planName?->duration_months,
                 'periodStart' => $subscription->period_start?->toIso8601String(),
                 'periodEnd' => $subscription->period_end?->toIso8601String(),
                 'cancelAtPeriodEnd' => $subscription->cancel_at_period_end,

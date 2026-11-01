@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\BillingWebhookController;
 use App\Http\Controllers\API\StripeBillingController;
 use App\Http\Controllers\API\StripeWebhookController;
+use App\Http\Controllers\BillingWebController;
 use App\Http\Middleware\LimitBillingPayload;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,7 @@ Route::get('api/v1/billing/plans', [StripeBillingController::class, 'plans'])
 
 Route::middleware(['auth:sanctum', 'throttle:subscription-purchases'])
     ->prefix('api/v1/billing')->group(function (): void {
+        Route::post('web-handoff', [BillingWebController::class, 'issue']);
         Route::post('checkouts', [StripeBillingController::class, 'checkout']);
         Route::get('checkouts/{orderId}', [StripeBillingController::class, 'checkoutStatus']);
         Route::get('subscription', [StripeBillingController::class, 'subscription']);
@@ -32,3 +34,12 @@ Route::middleware(['auth:sanctum', 'throttle:subscription-purchases'])
 
 // Return navigation is informational only: never grant credits from a GET.
 Route::view('billing/return', 'billing.return')->name('stripe.billing.return');
+
+Route::middleware(['web', 'throttle:30,1'])->group(function (): void {
+    Route::get('billing/handoff', [BillingWebController::class, 'consume'])->name('billing.web.handoff');
+    Route::group([], function (): void {
+        Route::get('billing/shop', [BillingWebController::class, 'shop'])->name('billing.web.shop');
+        Route::post('billing/shop/checkout', [BillingWebController::class, 'checkout'])
+            ->middleware('throttle:subscription-purchases')->name('billing.web.checkout');
+    });
+});

@@ -52,6 +52,7 @@ class StripeCheckoutService
         ];
 
         return [
+            'environment' => $this->environment(),
             'subscriptions' => $offers->where('kind', 'subscription')->map($map)->values()->all(),
             'topUps' => $offers->where('kind', 'topup')->map($map)->values()->all(),
             'externalCheckoutAllowed' => false,
