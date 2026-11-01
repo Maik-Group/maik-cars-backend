@@ -25,7 +25,7 @@ class RecoverAppleSubscriptionEvents extends Command
         $interval = ['start' => now()->subHours($hours)->getTimestampMs(), 'end' => now()->getTimestampMs()];
         $cursor = null;
         for ($pageIndex = 0; $pageIndex < $pages; $pageIndex++) {
-            $page = $apple->history(config('subscriptions.environment'), $interval, $cursor);
+            $page = $apple->history(config('stripe_billing.environment'), $interval, $cursor);
             foreach ($page['notifications'] as $notification) {
                 $event = $inbox->provider('apple', $notification['id'], $notification);
                 ProcessSubscriptionEvent::dispatch($event->getKey());

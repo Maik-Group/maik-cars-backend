@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     // Legacy subscription fixtures explicitly use production identities.
     // Keep this isolated test deterministic when local QA runs sandbox.
-    config(['subscriptions.environment' => 'production', 'subscriptions.enforcement_enabled' => true]);
+    config(['stripe_billing.environment' => 'production']);
     app(ItemPriceSettingsService::class)->updateRatePercent(100);
     $spot = Mockery::mock(MetalsSpotService::class);
     $spot->shouldReceive('all')->andReturn(['data' => [
@@ -71,7 +71,7 @@ test('reveal rejects guests missing access inactive accounts and hidden items wi
     $this->assertDatabaseCount('daily_usage', 0);
 });
 
-test('valuation failure consumes no allowance and a disabled cutover retains legacy browse behavior', function (): void {
+test('valuation failure consumes no allowance and protected item access remains enforced', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
     $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
@@ -80,14 +80,13 @@ test('valuation failure consumes no allowance and a disabled cutover retains leg
     app()->instance(MetalsSpotService::class, $spot);
     $this->postJson('/api/v1/items/'.$item->id.'/valuation')->assertStatus(503)->assertJsonPath('code', 'VALUATION_UNAVAILABLE');
     $this->assertDatabaseCount('daily_usage', 0);
-    config(['subscriptions.enforcement_enabled' => false]);
-    $this->getJson('/api/items/'.$item->id)->assertOk()->assertJsonPath('data.weightKg', 1)->assertJsonPath('data.access.valuationRequired', false);
+    $this->getJson('/api/items/'.$item->id)->assertOk()->assertJsonPath('data.access.valuationRequired', true);
 });
 
 test('status exposes only account binding and safe access data', function (): void {
     Sanctum::actingAs(User::factory()->create());
     $this->getJson('/api/v1/subscriptions/status')->assertOk()
-        ->assertJsonPath('data.active', false)->assertJsonPath('data.purchasesEnabled', false)
+        ->assertJsonPath('data.active', false)->assertJsonPath('data.purchasesEnabled', true)
         ->assertJsonStructure(['data' => ['accountBinding' => ['apple', 'google'], 'usage' => ['limit', 'used', 'remaining', 'resetsAt']]])
         ->assertJsonMissingPath('data.purchaseReference');
 });

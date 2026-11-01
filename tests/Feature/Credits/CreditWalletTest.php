@@ -14,6 +14,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => config(['stripe_billing.environment' => 'production']));
+
 it('grants idempotently and spends once per serial family per UTC day', function (): void {
     $user = User::factory()->create();
     $wallet = app(CreditWalletService::class);
@@ -137,7 +139,7 @@ it('rejects mismatched expiry for repeated grants and accepts credits above form
 });
 
 it('never issues a sandbox complimentary allocation into production after environment switch', function (): void {
-    config(['subscriptions.environment' => 'sandbox']);
+    config(['stripe_billing.environment' => 'sandbox']);
     $user = User::factory()->create();
     $service = app(ComplimentaryCreditService::class);
     $start = CarbonImmutable::parse('2026-11-01 00:00:00', 'UTC');
@@ -145,11 +147,11 @@ it('never issues a sandbox complimentary allocation into production after enviro
     expect($allocation->environment)->toBe('sandbox')
         ->and($service->allocateDue($start))->toBe(1)
         ->and(app(CreditWalletService::class)->balance($user, 'sandbox'))->toBe(4);
-    config(['subscriptions.environment' => 'production']);
+    config(['stripe_billing.environment' => 'production']);
     expect($service->allocateDue($start->addMonthNoOverflow()))->toBe(0)
         ->and(app(CreditWalletService::class)->balance($user))->toBe(0)
         ->and(CreditGrant::query()->where('environment', 'production')->count())->toBe(0);
-    config(['subscriptions.environment' => 'sandbox']);
+    config(['stripe_billing.environment' => 'sandbox']);
     expect($service->allocateDue($start->addMonthNoOverflow()))->toBe(1)
         ->and(CreditGrant::query()->where('environment', 'sandbox')->count())->toBe(2);
 });

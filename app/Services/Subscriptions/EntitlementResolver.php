@@ -3,7 +3,6 @@
 namespace App\Services\Subscriptions;
 
 use App\Exceptions\SubscriptionAccessException;
-use App\Models\Setting;
 use App\Models\SubscriptionEntitlement;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -11,21 +10,14 @@ use Illuminate\Support\Collection;
 
 class EntitlementResolver
 {
-    private ?bool $enforcementLatched = null;
-
     public function environment(User $user): string
     {
-        return in_array($user->getKey(), config('subscriptions.qa_user_ids', []), true)
-            ? 'sandbox' : config('subscriptions.environment');
+        return (string) config('stripe_billing.environment');
     }
 
     public function enforcementEnabled(): bool
     {
-        $cutover = config('subscriptions.cutover_at');
-
-        return ($this->enforcementLatched ??= Setting::query()->whereKey('subscriptions.enforcement_activated_at')->exists())
-            || config('subscriptions.enforcement_enabled')
-            && (! $cutover || CarbonImmutable::now('UTC')->greaterThanOrEqualTo(CarbonImmutable::parse($cutover, 'UTC')));
+        return true;
     }
 
     public function activeSources(User $user, CarbonImmutable $at): Collection

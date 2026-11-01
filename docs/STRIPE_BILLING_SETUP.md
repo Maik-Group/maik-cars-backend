@@ -5,29 +5,15 @@ automatic migration credits. Credits may be issued only by an explicit
 administrator action, a successfully fulfilled qualifying Stripe invoice, or a
 successfully paid one-time top-up.
 
-## Required environment
+## Configuration
 
-- `SUBSCRIPTIONS_ENVIRONMENT=sandbox` during QA; use matching
-  `STRIPE_BILLING_ENVIRONMENT=sandbox` for Stripe and wallet isolation.
-  Both must agree or checkout, webhook fulfillment and reconciliation fail
-  closed without credit issuance.
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`: secure server-only Stripe
-  restricted credentials for the environment.
-- `STRIPE_RETURN_URL`: approved HTTPS endpoint, e.g. this application's
-  `/billing/return`; no access grants occur on return.
-- `STRIPE_PORTAL_RETURN_URL`: verified HTTPS return location.
-- `STRIPE_PORTAL_CONFIGURATION`, `STRIPE_RESTRICTED_PORTAL_CONFIGURATION`:
-  Stripe Customer Portal configurations with **no unrestricted tier changes**.
-- `STRIPE_APPROVED_PURCHASE_CONTEXTS`: explicit comma-separated contexts.
-  Empty by default; do not add native contexts without verified store approvals.
-- `STRIPE_CHECKOUT_ENABLED=false` until sandbox QA and app/store approvals pass.
-- `STRIPE_NATIVE_EXTERNAL_CHECKOUT_APPROVED=false` until the native legal,
-  regional, program and reporting adapters are verified and approved.
+Subscription enforcement and purchase logic have the same behavior in Stripe test and live accounts. **The Stripe secret key selects the mode automatically**: `sk_test_...` uses `sandbox`, and `sk_live_...` uses `production`. The payment mode must also match the verified webhook event `livemode` and the database price identities. Never mix the two environments for a wallet grant or transaction.
 
-Never treat a client-provided country or purchase context as proof of regional
-eligibility. The native purchase flow must remain disabled until the external
-purchase program requirements are actually implemented.
-
+- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are private backend credentials for the same Stripe mode. Use separate webhook signing secrets for test and live.
+- `STRIPE_RETURN_URL` and `STRIPE_PORTAL_RETURN_URL` are verified HTTPS return destinations. Returning from checkout never grants credit; only verified provider evidence does.
+- `STRIPE_PORTAL_CONFIGURATION` and `STRIPE_RESTRICTED_PORTAL_CONFIGURATION` must enforce safe subscription changes.
+- Publish and verify matching Stripe prices in the admin catalog. Unverified or draft prices cannot be purchased.
+- Native external payments must meet Apple/Google policy and applicable country/program requirements before the app offers them. Keys do not provide policy approval.
 ## Operations
 
 1. Run additive migrations against a verified staging database first. Do **not**
@@ -44,8 +30,8 @@ purchase program requirements are actually implemented.
    require manual investigation.
 4. Verify duplicates, out-of-order webhooks, initial invoices, 1/3/6/12 month
    renewals, top-ups, refunds and dispute cases using separate Stripe sandbox.
-5. Activate catalog enforcement independently of purchase enablement.
-6. Do not enable live checkout until tax classification, merchant identity,
+5. Enforce subscription and credit access consistently; admins explicitly issue complimentary credits if needed.
+6. Do not publish native live checkout until tax classification, merchant identity,
    portal policy, country/program approvals, app links and legacy paid rights
    are reconciled.
 

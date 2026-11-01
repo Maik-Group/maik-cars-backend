@@ -43,7 +43,7 @@ class AdminGrantBatchService
         }
         $plan = $kind === 'complimentary' ? SubscriptionPlan::query()->findOrFail($planId) : null;
         $planSnapshot = $plan ? ['key' => $plan->key, 'name' => $plan->name, 'revision' => $plan->revision, 'duration_months' => $plan->duration_months] : null;
-        $environment = config('subscriptions.environment', 'production');
+        $environment = config('stripe_billing.environment');
         $query = User::query()->appUsers()->where('is_active', true);
         if ($audience === 'selected') {
             $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));

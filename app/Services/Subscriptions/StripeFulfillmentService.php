@@ -24,9 +24,14 @@ class StripeFulfillmentService
 
     private function assertEnvironment(string $environment): void
     {
+        $key = config('stripe_billing.secret_key');
+        $keyEnvironment = match (true) {
+            is_string($key) && str_starts_with($key, 'sk_test_') => 'sandbox',
+            is_string($key) && str_starts_with($key, 'sk_live_') => 'production',
+            default => null,
+        };
         if (! in_array($environment, ['sandbox', 'production'], true)
-            || $environment !== config('stripe_billing.environment')
-            || $environment !== config('subscriptions.environment')) {
+            || $environment !== $keyEnvironment) {
             throw new RuntimeException('Stripe and wallet environments must match.');
         }
     }

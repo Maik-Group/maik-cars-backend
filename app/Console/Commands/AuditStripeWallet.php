@@ -20,11 +20,6 @@ class AuditStripeWallet extends Command
     public function handle(): int
     {
         $env = (string) config('stripe_billing.environment');
-        if ($env !== (string) config('subscriptions.environment')) {
-            $this->error('Stripe and wallet billing environments differ.');
-
-            return self::FAILURE;
-        }
         $limit = min(500000, max(1, (int) $this->option('limit')));
         $checked = 0;
         $errors = 0;

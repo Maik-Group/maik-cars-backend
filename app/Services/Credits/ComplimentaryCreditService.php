@@ -21,7 +21,7 @@ class ComplimentaryCreditService
 
         return ComplimentaryAllocation::query()->create([
             'user_id' => $user->getKey(), 'credits' => $credits, 'months' => $months,
-            'environment' => $environment ?? config('subscriptions.environment', 'production'),
+            'environment' => $environment ?? config('stripe_billing.environment'),
             'starts_at' => $startsAt, 'ends_at' => $endsAt, 'issuance_mode' => $mode,
             'subscription_plan_id' => $plan?->id,
             'plan_snapshot' => $plan ? ['key' => $plan->key, 'name' => $plan->name, 'revision' => $plan->revision, 'duration_months' => $plan->duration_months] : null,
@@ -32,7 +32,7 @@ class ComplimentaryCreditService
     {
         $now ??= CarbonImmutable::now('UTC');
         $count = 0;
-        $environment = config('subscriptions.environment', 'production');
+        $environment = config('stripe_billing.environment');
         ComplimentaryAllocation::query()->where('environment', $environment)->whereNull('revoked_at')->where('starts_at', '<=', $now)
             ->whereNotNull('ends_at')->where('ends_at', '>', $now)
             ->orderBy('id')->chunkById(100, function ($allocations) use ($now, &$count): void {

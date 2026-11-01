@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -37,11 +36,9 @@ function stripeOffer(string $kind = 'topup', int $months = 0): BillingPlanPrice
 }
 
 beforeEach(function (): void {
-    config()->set('subscriptions.environment', 'sandbox');
     config()->set('stripe_billing.environment', 'sandbox');
-    config()->set('stripe_billing.checkout_enabled', false);
-    config()->set('stripe_billing.purchase_contexts', []);
-    config()->set('stripe_billing.secret_key', null);
+    config()->set('stripe_billing.secret_key', 'sk_test_fake');
+    config()->set('stripe_billing.return_url', null);
 });
 
 it('keeps Stripe checkout closed by default and makes catalog reading side-effect free', function (): void {
@@ -58,8 +55,6 @@ it('creates idempotent hosted topup checkout for the owner with immutable server
     $offer = stripeOffer();
     $user = User::factory()->create(['is_active' => true]);
     Sanctum::actingAs($user);
-    config()->set('stripe_billing.checkout_enabled', true);
-    config()->set('stripe_billing.purchase_contexts', ['test-web']);
     config()->set('stripe_billing.secret_key', 'sk_test_fake');
     config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
     $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
@@ -67,7 +62,7 @@ it('creates idempotent hosted topup checkout for the owner with immutable server
         $mock->shouldReceive('checkout')->once()
             ->andReturn(['id' => 'cs_test_1', 'url' => 'https://checkout.stripe.com/c/pay/test', 'expires_at' => now()->addMinutes(30)->timestamp]);
     });
-    $data = ['kind' => 'topup', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'test-web'];
+    $data = ['kind' => 'topup', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'web'];
     $first = $this->postJson('/api/v1/billing/checkouts', $data, ['Idempotency-Key' => 'stable-purchase-test-1'])
         ->assertCreated()->assertJsonPath('data.status', 'checkout_created');
     $second = $this->postJson('/api/v1/billing/checkouts', $data, ['Idempotency-Key' => 'stable-purchase-test-1'])
@@ -79,6 +74,38 @@ it('creates idempotent hosted topup checkout for the owner with immutable server
         ->assertUnprocessable();
     $this->getJson('/api/v1/billing/checkouts/'.$first->json('data.orderId'))
         ->assertOk()->assertJsonPath('data.paymentStatus', 'unpaid');
+});
+
+it('rejects native app checkout contexts without making Stripe requests', function (): void {
+    $offer = stripeOffer();
+    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldNotReceive('customer');
+        $mock->shouldNotReceive('checkout');
+    });
+    foreach (['android-app', 'ios-app'] as $context) {
+        $this->postJson('/api/v1/billing/checkouts', [
+            'kind' => 'topup', 'priceVersionId' => $offer->id,
+            'purchaseContextId' => $context,
+        ], ['Idempotency-Key' => 'native-rejected-test-123'])->assertForbidden();
+    }
+    expect(BillingOrder::count())->toBe(0);
+});
+
+it('rejects signed webhooks whose livemode differs from the Stripe secret key', function (): void {
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('verifyEvent')->twice()->andReturn(
+            ['id' => 'evt_wrong_live', 'type' => 'product.created', 'livemode' => true],
+            ['id' => 'evt_wrong_test', 'type' => 'product.created', 'livemode' => false],
+        );
+    });
+    $this->postJson('/api/v1/billing/stripe/webhook', ['id' => 'evt_wrong_live'], ['Stripe-Signature' => 'valid'])
+        ->assertStatus(400)->assertJsonPath('code', 'WEBHOOK_ENVIRONMENT_MISMATCH');
+    config()->set('stripe_billing.secret_key', 'sk_live_fake');
+    $this->postJson('/api/v1/billing/stripe/webhook', ['id' => 'evt_wrong_test'], ['Stripe-Signature' => 'valid'])
+        ->assertStatus(400)->assertJsonPath('code', 'WEBHOOK_ENVIRONMENT_MISMATCH');
+    expect(StripeWebhookEvent::count())->toBe(0);
 });
 
 it('fulfills a verified paid topup only once and keeps purchased points nonexpiring', function (): void {
@@ -378,9 +405,8 @@ it('detects credit ledger drift without silently changing source balances', func
 
 it('rejects cross-environment Stripe requests before provider or wallet mutation', function (): void {
     stripeOffer();
-    config()->set('stripe_billing.environment', 'production');
-    expect(fn () => app(StripeCheckoutService::class)->catalog())
-        ->toThrow(HttpException::class, 'BILLING_ENVIRONMENT_MISMATCH');
+    config()->set('stripe_billing.secret_key', 'sk_live_fake');
+    expect(app(StripeCheckoutService::class)->catalog()['topUps'])->toBe([]);
     $this->postJson('/api/v1/billing/stripe/webhook', ['id' => 'evt_wrong'], ['Stripe-Signature' => 'invalid'])
         ->assertStatus(400);
     expect(CreditGrant::count())->toBe(0);

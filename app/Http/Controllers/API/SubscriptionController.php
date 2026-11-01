@@ -19,7 +19,7 @@ class SubscriptionController extends Controller
     {
         $validated = $request->validate(['platform' => ['required', 'in:ios,android']]);
         $environment = $request->user('sanctum')
-            ? app(EntitlementResolver::class)->environment($request->user('sanctum')) : config('subscriptions.environment');
+            ? app(EntitlementResolver::class)->environment($request->user('sanctum')) : config('stripe_billing.environment');
         $plans = SubscriptionPlan::query()->where('is_active', true)->where('is_visible', true)
             ->with(['storeProducts' => fn ($query) => $query->where('platform', $validated['platform'])->where('environment', $environment)->where('validation_state', 'verified')])
             ->orderBy('sort_order')->get();
@@ -37,8 +37,8 @@ class SubscriptionController extends Controller
         $access = $entitlements->resolve($user);
 
         return response()->json(['data' => [
-            'active' => $access['active'], 'enforcement_enabled' => $entitlements->enforcementEnabled(),
-            'purchases_enabled' => config('subscriptions.purchases_enabled'), 'environment' => $entitlements->environment($user),
+            'active' => $access['active'], 'enforcement_enabled' => true,
+            'purchases_enabled' => true, 'environment' => $entitlements->environment($user),
             'terms_url' => config('subscriptions.terms_url'),
             'sources' => $access['sources']->map(fn ($source) => [
                 ...$source->only(['id', 'source', 'starts_at', 'ends_at', 'daily_allowance']),

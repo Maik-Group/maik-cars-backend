@@ -22,11 +22,6 @@ class ReconcileStripeOrders extends Command
         }
 
         $environment = (string) config('stripe_billing.environment');
-        if ($environment !== (string) config('subscriptions.environment')) {
-            $this->error('Stripe and wallet environments differ. No provider requests were made.');
-
-            return self::FAILURE;
-        }
         $orders = BillingOrder::query()->where('environment', $environment)
             ->whereIn('status', ['reserved', 'needs_reconciliation', 'checkout_created', 'paid'])
             ->where('created_at', '<', now('UTC')->subMinutes(2))

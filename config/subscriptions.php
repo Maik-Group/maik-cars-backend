@@ -1,11 +1,6 @@
 <?php
 
 return [
-    'enforcement_enabled' => (bool) env('SUBSCRIPTIONS_ENFORCEMENT_ENABLED', false),
-    'purchases_enabled' => (bool) env('SUBSCRIPTIONS_PURCHASES_ENABLED', false),
-    'environment' => env('SUBSCRIPTIONS_ENVIRONMENT', 'production'),
-    'qa_user_ids' => array_filter(array_map('intval', explode(',', (string) env('SUBSCRIPTIONS_QA_USER_IDS', '')))),
-    'cutover_at' => env('SUBSCRIPTIONS_CUTOVER_AT'),
     'terms_url' => env('SUBSCRIPTIONS_TERMS_URL'),
     'support_url' => env('SUBSCRIPTIONS_SUPPORT_URL'),
     'display_lease_seconds' => 60,

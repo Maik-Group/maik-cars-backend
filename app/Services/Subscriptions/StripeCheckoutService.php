@@ -19,9 +19,13 @@ class StripeCheckoutService
 
     public function environment(): string
     {
-        $environment = (string) config('stripe_billing.environment', 'sandbox');
-        if ($environment !== (string) config('subscriptions.environment', 'production')
-            || ! in_array($environment, ['production', 'sandbox'], true)) {
+        $key = config('stripe_billing.secret_key');
+        $environment = match (true) {
+            is_string($key) && str_starts_with($key, 'sk_test_') => 'sandbox',
+            is_string($key) && str_starts_with($key, 'sk_live_') => 'production',
+            default => null,
+        };
+        if (! in_array($environment, ['production', 'sandbox'], true)) {
             throw new HttpException(503, 'BILLING_ENVIRONMENT_MISMATCH');
         }
 
@@ -31,12 +35,9 @@ class StripeCheckoutService
     public function catalog(): array
     {
         $allowed = $this->isCheckoutConfigured();
-        $previewDrafts = app()->environment('local')
-            && $this->environment() === 'sandbox'
-            && config('stripe_billing.local_draft_preview') === true;
         $offers = BillingPlanPrice::query()->where('environment', $this->environment())
             ->whereNull('retired_at')
-            ->when(! $previewDrafts, fn ($query) => $query->whereNotNull('published_at'))
+            ->whereNotNull('published_at')
             ->orderBy('kind')->orderBy('amount_minor')->get();
         $map = static fn (BillingPlanPrice $price): array => [
             'priceVersionId' => $price->getKey(),
@@ -53,21 +54,25 @@ class StripeCheckoutService
         return [
             'subscriptions' => $offers->where('kind', 'subscription')->map($map)->values()->all(),
             'topUps' => $offers->where('kind', 'topup')->map($map)->values()->all(),
-            'externalCheckoutAllowed' => $allowed && config('stripe_billing.native_external_checkout_approved') === true,
+            'externalCheckoutAllowed' => false,
         ];
     }
 
     public function isCheckoutConfigured(): bool
     {
-        return config('stripe_billing.checkout_enabled') === true
-            && filled(config('stripe_billing.secret_key'))
-            && filled(config('stripe_billing.return_url'))
-            && count(config('stripe_billing.purchase_contexts', [])) > 0;
+        $key = config('stripe_billing.secret_key');
+
+        return is_string($key)
+            && (str_starts_with($key, 'sk_test_') || str_starts_with($key, 'sk_live_'))
+            && is_string(config('stripe_billing.return_url'))
+            && str_starts_with(config('stripe_billing.return_url'), 'https://');
     }
 
     public function begin(User $user, string $kind, int $priceId, string $context, string $idempotency): BillingOrder
     {
-        if (! $this->isCheckoutConfigured() || ! in_array($context, config('stripe_billing.purchase_contexts', []), true)) {
+        // Hosted Checkout is currently authorized for the web purchase flow.
+        // Native store purchase contexts require a separate approved adapter.
+        if (! $this->isCheckoutConfigured() || $context !== 'web') {
             throw new HttpException(403, 'CHECKOUT_UNAVAILABLE');
         }
         if (! $user->is_active) {

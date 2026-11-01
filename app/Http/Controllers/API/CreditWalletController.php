@@ -16,7 +16,7 @@ class CreditWalletController extends Controller
         return response()->json(['data' => [
             'balance' => $wallet->balance($request->user()),
             'grants' => CreditGrant::query()->where('user_id', $request->user()->getKey())
-                ->where('environment', config('subscriptions.environment', 'production'))
+                ->where('environment', config('stripe_billing.environment'))
                 ->latest('id')->limit(100)->get(['id', 'source_type', 'credits', 'remaining', 'expires_at', 'revoked_at', 'held_at']),
         ]])->header('Cache-Control', 'private, no-store');
     }
@@ -24,7 +24,7 @@ class CreditWalletController extends Controller
     public function transactions(Request $request): JsonResponse
     {
         return response()->json(CreditLedgerEntry::query()->where('user_id', $request->user()->getKey())
-            ->whereHas('grant', fn ($query) => $query->where('environment', config('subscriptions.environment', 'production')))
+            ->whereHas('grant', fn ($query) => $query->where('environment', config('stripe_billing.environment')))
             ->orderByDesc('id')->paginate(30))->header('Cache-Control', 'private, no-store');
     }
 }

@@ -23,8 +23,13 @@ class StripeWebhookController extends Controller
         } catch (Throwable) {
             return response()->json(['code' => 'INVALID_STRIPE_SIGNATURE'], 400);
         }
-        $environment = (string) config('stripe_billing.environment', 'production');
-        if ($environment !== (string) config('subscriptions.environment', 'production')) {
+        $key = config('stripe_billing.secret_key');
+        $environment = match (true) {
+            is_string($key) && str_starts_with($key, 'sk_test_') => 'sandbox',
+            is_string($key) && str_starts_with($key, 'sk_live_') => 'production',
+            default => null,
+        };
+        if (! in_array($environment, ['sandbox', 'production'], true)) {
             return response()->json(['code' => 'BILLING_ENVIRONMENT_MISMATCH'], 503);
         }
         if (! is_string($event['id'] ?? null) || ! is_string($event['type'] ?? null)

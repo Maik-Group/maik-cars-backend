@@ -18,9 +18,6 @@ class StorePurchaseController extends Controller
     public function purchase(StorePurchaseRequest $request, string $provider, StorePurchaseService $purchases): JsonResponse
     {
         $this->activeAccount($request);
-        if (! config('subscriptions.purchases_enabled')) {
-            throw new SubscriptionAccessException('PURCHASES_UNAVAILABLE', 503);
-        }
         $agreement = $purchases->verify($request->user(), $provider, $request->validated('reference'));
 
         return response()->json(['data' => ['verified' => true, 'agreement_id' => $agreement->getKey(), 'state' => $agreement->provider_state, 'acknowledgement_pending' => $agreement->acknowledgement_pending]], $agreement->provider_state === 'pending' ? 202 : 200)

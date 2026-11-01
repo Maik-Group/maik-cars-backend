@@ -44,10 +44,8 @@ class MaikCatQaBillingSeeder extends Seeder
         if (! app()->environment('local')
             || DB::connection()->getDatabaseName() !== 'maik_cat_final_pro'
             || ! in_array((string) config('database.connections.mysql.host'), ['localhost', '127.0.0.1', '::1'], true)
-            || config('subscriptions.environment') !== 'sandbox'
-            || config('stripe_billing.environment') !== 'sandbox'
-            || config('stripe_billing.checkout_enabled') === true) {
-            throw new RuntimeException('QA seeder requires the approved local MySQL, sandbox wallet and disabled Stripe Checkout.');
+            || config('stripe_billing.environment') !== 'sandbox') {
+            throw new RuntimeException('QA seeder requires the approved local MySQL and Stripe test credentials.');
         }
 
         $file = storage_path('app/private/maik-qa-credentials.json');

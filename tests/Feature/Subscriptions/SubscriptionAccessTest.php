@@ -21,21 +21,14 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-21 12:00:00', 'UTC'));
-    config(['subscriptions.environment' => 'production', 'subscriptions.enforcement_enabled' => true]);
+    config(['stripe_billing.environment' => 'production']);
 });
 
 afterEach(fn () => CarbonImmutable::setTestNow());
 
-test('cutover activation is explicit idempotent and keeps data protected after purchase shutdown', function (): void {
-    config(['subscriptions.enforcement_enabled' => false, 'subscriptions.cutover_at' => '2026-10-21 11:00:00']);
-    $this->artisan('subscriptions:activate-enforcement', ['--reason' => 'Approved cutover'])->assertFailed();
-    $this->assertDatabaseMissing('settings', ['key' => 'subscriptions.enforcement_activated_at']);
-    config(['subscriptions.enforcement_enabled' => true]);
-    $this->artisan('subscriptions:activate-enforcement', ['--reason' => 'Approved cutover'])->assertSuccessful();
-    $this->artisan('subscriptions:activate-enforcement', ['--reason' => 'Retry cutover'])->assertSuccessful();
-    config(['subscriptions.enforcement_enabled' => false, 'subscriptions.purchases_enabled' => false]);
+test('subscription protection is always active without activation or cutover', function (): void {
     expect(app(EntitlementResolver::class)->enforcementEnabled())->toBeTrue();
-    $this->assertDatabaseCount('subscription_audit_logs', 1);
+    $this->assertDatabaseMissing('settings', ['key' => 'subscriptions.enforcement_activated_at']);
 });
 
 test('automatic revalidation can reuse a claim but cannot spend a new-day or new-family allowance', function (): void {

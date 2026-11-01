@@ -13,6 +13,8 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    config()->set('stripe_billing.secret_key', 'sk_test_valuation_feature_tests');
+    config()->set('stripe_billing.environment', 'sandbox');
     $this->travelTo(CarbonImmutable::parse('2026-11-01 23:58:00', 'UTC'));
     app(ItemPriceSettingsService::class)->updateRatePercent(100);
     $spot = Mockery::mock(MetalsSpotService::class);

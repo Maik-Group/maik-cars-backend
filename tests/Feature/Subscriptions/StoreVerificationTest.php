@@ -29,7 +29,7 @@ beforeEach(function (): void {
     Queue::fake();
     Http::preventStrayRequests();
     Process::preventStrayProcesses();
-    config(['subscriptions.purchases_enabled' => true, 'subscriptions.environment' => 'production']);
+    config(['stripe_billing.environment' => 'production']);
 });
 
 function verifiedAppleFixture(User $user, array $overrides = []): array
@@ -60,12 +60,9 @@ function subscriptionStoreMapping(string $platform = 'ios'): PlanStoreProduct
     return $mapping;
 }
 
-test('unverified and disabled purchases never grant access', function (): void {
+test('unverified purchases never grant access', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
-    config(['subscriptions.purchases_enabled' => false]);
-    $this->postJson('/api/v1/subscriptions/purchases/apple', ['reference' => 'forged'])->assertStatus(503)->assertJsonPath('code', 'PURCHASES_UNAVAILABLE');
-    config(['subscriptions.purchases_enabled' => true]);
     Process::fake(['*' => Process::result(output: '{"ok":false,"retryable":false}', exitCode: 1)]);
     $this->postJson('/api/v1/subscriptions/purchases/apple', ['reference' => 'forged'])->assertStatus(422)->assertJsonPath('code', 'INVALID_PURCHASE');
     $this->assertDatabaseCount('billing_agreements', 0);

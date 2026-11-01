@@ -11,8 +11,7 @@
 
 1. عدم تنفيذ `migrate:fresh` أو حذف المستخدمين والمنتجات أو استعادة قاعدة البيانات فوق الحالة الحالية. المعاملات التجريبية تُنفذ فقط بحسابات QA واضحة الاسم، وبعد توثيق التغييرات والقدرة على عكسها إن أمكن؛ سجلات المحفظة المالية **لا تُحذف** بغرض تنظيف الاختبار.
 2. البيئة الحالية لا تحتوي على عروض Stripe منشورة أو أرصدة مستخدمين. لا نُنشئ أسعارًا تجارية تقديرية ولا ننفّذ عملية دفع حقيقية، ولا نمنح نقاطًا لمستخدم فعلي دون اختياره صراحةً.
-3. `STRIPE_CHECKOUT_ENABLED=false` و`STRIPE_NATIVE_EXTERNAL_CHECKOUT_APPROVED=false` افتراضيًا. اختبارات الدفع الفعلي وتجدد الفواتير تبقى معلقة لحين توفير بيانات Stripe Test وموافقات المتاجر؛ يمكن اختبار منطقها المعزول بالـmocks حتى ذلك الحين.
-4. يجب أن تتطابق بيئة Stripe والمحفظة (`STRIPE_BILLING_ENVIRONMENT` و`SUBSCRIPTIONS_ENVIRONMENT`). لا يُرحّل رصيد Sandbox إلى Production.
+> Historical QA-only environment switches referenced in this section were removed. Stripe mode now derives from STRIPE_SECRET_KEY; this historic snapshot does not describe current configuration.
 5. قبل أي تعديل QA مالي على المستخدمين: سجل `user_id`، السبب، عدد النقاط، `environment`، الصلاحية، المرجع، ثم تحقّق من ledger قبل/بعد. لا ترسل push أو بريد جماعي أثناء QA.
 
 ## مراحل التنفيذ ونتائجها
@@ -103,7 +102,7 @@ adb shell am start -n maik.cat.android/.MainActivity
 
 - استُخدمت قاعدة **MySQL المحلية الحالية `maik_cat_final_pro`** نفسها دون إنشاء قاعدة جديدة أو تشغيل `migrate:fresh`. السبعة migrations الجديدة كلها `Ran` ضمن batch 13. بقيت المنتجات الأصلية البالغ عددها 10,298، وبقي المستخدمان الأصليان دون منحهم أي رصيد تجريبي.
 - نسخة SQL قبل التعديلات: `C:\laragon\www\maik\backups\maik_cat_final_pro_before_subscriptions_20261101_155131.sql`. نسخة `.env` قبل تغيير إعدادات QA: `C:\laragon\www\maik\backups\maik_backend_env_before_qa_20261101_163530.env`؛ يحتوي هذا الأخير على أسرار البيئة ويجب عدم مشاركته.
-- الإعدادات الفعلية المحلية: `SUBSCRIPTIONS_ENFORCEMENT_ENABLED=true`، `SUBSCRIPTIONS_ENVIRONMENT=sandbox`، `STRIPE_BILLING_ENVIRONMENT=sandbox`، `STRIPE_LOCAL_DRAFT_PREVIEW=true`، `SUBSCRIPTIONS_PURCHASES_ENABLED=false`، `STRIPE_CHECKOUT_ENABLED=false`، `STRIPE_NATIVE_EXTERNAL_CHECKOUT_APPROVED=false`، `SUBSCRIPTIONS_QA_USER_IDS=3,4,5,6,7,8,9,10,11,12,13`.
+> Historical QA-only environment switches referenced in this section were removed. Stripe mode now derives from STRIPE_SECRET_KEY; this historic snapshot does not describe current configuration.
 - **تنبيه:** فرض الاشتراك وحجب السعر مفعّل في هذا الخادم المحلي للجميع، وليس لمستخدمي QA فقط. أما الأرصدة التجريبية فهي محصورة بمستخدمي QA ضمن `sandbox` ولا تمنح أرصدة حقيقية لبقية المستخدمين. للرجوع إلى إعدادات ما قبل QA استخدم النسخة الاحتياطية للبيئة ثم `php artisan config:clear` بعد انتهاء الاختبار وبقرار صريح.
 - Seeder مستقل قابل للتكرار دون مضاعفة الأرصدة: `php artisan db:seed --class=MaikCatQaBillingSeeder --force`. أنشأ 11 مستخدمًا خاصًا بالاختبار، أربعة خطط من 1/3/6/12 شهرًا، ثلاث باقات Top-up وهمية وغير منشورة، حالة مجانية دورية وأخرى لمرة واحدة، ومحفظة فارغة، وأرصدة مدفوعة *محاكاة محلية*، ورصيد مختلط، وانتهاء/إلغاء، وإيقاف مصدر. كما اختبر دفعة إدارية تمنح ثلاث نقاط لمستخدم QA واحد وحالة أخرى ألغيت دون منح 99 نقطة.
 - أرصدة المستخدمين التجريبية عند التهيئة: `empty=0`, `free=7`, `paid=15` (أصبحت **14** بعد أول طلب تقييم فعلي)، `topup=10`, `mixed=17`, `complimentary=6`, `once=4`, `expired=0`, `held=2`, `bulk=3`, `admin=0`.

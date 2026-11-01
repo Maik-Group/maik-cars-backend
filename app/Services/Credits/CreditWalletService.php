@@ -18,7 +18,7 @@ class CreditWalletService
         if ($credits < 1 || trim($sourceKey) === '') {
             throw new \InvalidArgumentException('Invalid credit grant');
         }
-        $environment ??= config('subscriptions.environment', 'production');
+        $environment ??= config('stripe_billing.environment');
 
         return DB::transaction(function () use ($user, $sourceType, $credits, $sourceKey, $expiresAt, $environment): CreditGrant {
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
@@ -43,7 +43,7 @@ class CreditWalletService
 
     public function spend(User $user, Item $item, ?string $environment = null, bool $validateExistingOnly = false): array
     {
-        $environment ??= config('subscriptions.environment', 'production');
+        $environment ??= config('stripe_billing.environment');
         $today = CarbonImmutable::now('UTC')->toDateString();
         $serial = Item::normalizeSerialValue($item->normalized_serial ?: $item->serial_code);
         $fingerprint = hash('sha256', $serial !== '' ? 'serial:'.$serial : 'item:'.$item->getKey());
@@ -84,7 +84,7 @@ class CreditWalletService
     public function balance(User $user, ?string $environment = null): int
     {
         return (int) CreditGrant::query()->where('user_id', $user->getKey())
-            ->where('environment', $environment ?? config('subscriptions.environment', 'production'))
+            ->where('environment', $environment ?? config('stripe_billing.environment'))
             ->whereNull('revoked_at')->whereNull('held_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', CarbonImmutable::now('UTC')))
             ->sum('remaining');
     }
