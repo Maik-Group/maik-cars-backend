@@ -4,9 +4,12 @@ use App\Http\Controllers\API\AppVersionController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CalculatorController;
 use App\Http\Controllers\API\CarGroupController;
+use App\Http\Controllers\API\CreditValuationController;
+use App\Http\Controllers\API\CreditWalletController;
 use App\Http\Controllers\API\HomeController;
 use App\Http\Controllers\API\ItemController;
 use App\Http\Controllers\API\ItemImageSubmissionController;
+use App\Http\Controllers\API\ItemValuationController;
 use App\Http\Controllers\API\MarketChartController;
 use App\Http\Controllers\API\MarketNotificationController;
 use App\Http\Controllers\API\MetalsController;
@@ -14,8 +17,30 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\PublicItemImageController;
 use App\Http\Controllers\API\SavedItemController;
+use App\Http\Controllers\API\StorePurchaseController;
+use App\Http\Controllers\API\SubscriptionController;
 use App\Http\Controllers\ImportController;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('v1')->group(function (): void {
+    Route::get('subscription-plans', [SubscriptionController::class, 'plans']);
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('wallet', [CreditWalletController::class, 'show']);
+        Route::get('wallet/transactions', [CreditWalletController::class, 'transactions']);
+        Route::get('subscriptions/status', [SubscriptionController::class, 'status']);
+        Route::get('subscriptions/manage', [SubscriptionController::class, 'manage']);
+        Route::post('subscriptions/purchases/{provider}', [StorePurchaseController::class, 'purchase'])->whereIn('provider', ['apple', 'google'])->middleware('throttle:subscription-purchases');
+        Route::post('subscriptions/restore', [StorePurchaseController::class, 'restore'])->middleware('throttle:subscription-purchases');
+        Route::post('subscriptions/resync', [StorePurchaseController::class, 'resync'])->middleware('throttle:subscription-purchases');
+        Route::post('items/{item}/valuation', ItemValuationController::class)->middleware('throttle:subscription-reveals');
+    });
+});
+
+Route::prefix('v2')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('wallet', [CreditWalletController::class, 'show']);
+    Route::get('wallet/transactions', [CreditWalletController::class, 'transactions']);
+    Route::post('items/{item}/valuation', CreditValuationController::class)->middleware('throttle:subscription-reveals');
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login');

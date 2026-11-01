@@ -1,0 +1,10 @@
+{
+  "name": "maik-cat-apple-billing",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test verifier.test.mjs" },
+  "dependencies": {
+    "@apple/app-store-server-library": "3.1.0",
+    "jsonwebtoken": "9.0.3"
+  }
+}

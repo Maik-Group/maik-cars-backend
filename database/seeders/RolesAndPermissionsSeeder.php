@@ -22,6 +22,17 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_notification_audiences',
             'send_notifications',
             'view_notification_history',
+            'view_subscriptions',
+            'manage_subscription_plans',
+            'manage_subscription_products',
+            'grant_subscriptions',
+            'grant_free_credits',
+            'grant_complimentary_credits',
+            'grant_bulk_credits',
+            'revoke_credits',
+            'revoke_subscriptions',
+            'reconcile_subscriptions',
+            'view_subscription_diagnostics',
         ];
 
         foreach ($permissions as $permission) {
@@ -54,6 +65,15 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdmin->syncPermissions($permissions);
 
         $admin->syncPermissions([
+            'view_subscriptions',
+            'grant_subscriptions',
+            'grant_free_credits',
+            'grant_complimentary_credits',
+            'grant_bulk_credits',
+            'revoke_credits',
+            'revoke_subscriptions',
+            'reconcile_subscriptions',
+            'view_subscription_diagnostics',
             'view_statistics',
             'manage_items',
             'manage_car_groups',

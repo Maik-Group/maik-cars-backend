@@ -1,0 +1,18 @@
+com.android.billingclient:billing:9.1.0
+  Variant runtime:
+    | Attribute Name                                  | Provided     | Requested    |
+    |-------------------------------------------------|--------------|--------------|
+    | org.gradle.libraryelements                      | jar          |              |
+    | org.gradle.status                               | release      |              |
+    | org.gradle.category                             | library      | library      |
+    | org.gradle.usage                                | java-runtime | java-runtime |
+    | com.android.build.api.attributes.AgpVersionAttr |              | 8.11.0       |
+    | com.android.build.api.attributes.BuildTypeAttr  |              | debug        |
+    | org.gradle.jvm.environment                      |              | android      |
+    | org.jetbrains.kotlin.platform.type              |              | androidJvm   |
+
+com.android.billingclient:billing:9.1.0
+\--- io.github.hyochan.openiap:openiap-google:4.0.3
+     \--- project :expo-iap
+          \--- project :expo
+               \--- debugRuntimeClasspath

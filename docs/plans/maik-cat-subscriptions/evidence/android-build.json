@@ -1,0 +1,30 @@
+{
+  "recorded_at_utc": "2026-10-22T17:13:27.7593015Z",
+  "build_exit_code": 0,
+  "build_duration": "40m 3s",
+  "variant": "debug",
+  "development_client": true,
+  "application_id": "maik.cat.android",
+  "compile_only_api_origin": "https://staging.invalid",
+  "js_bundle": "Not embedded; requires Metro",
+  "apk": {
+    "path": "C:\\laragon\\www\\maik\\maik-cat-mobile\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+    "bytes": 80079881,
+    "sha256": "ABC730FA24D155F05E26B094FBD626FB28DEE73C8A82F7E2555983D66410EA1D",
+    "created_at_utc": "2026-10-22T06:02:31.4713477Z"
+  },
+  "versions": {
+    "expo": "54.0.37",
+    "react_native": "0.81.5",
+    "expo_iap": "6.1.1",
+    "openiap_google": "4.0.3",
+    "google_billing": "9.1.0",
+    "gradle": "8.14.3",
+    "jdk": "17.0.20.1+1",
+    "ndk": "27.1.12297006"
+  },
+  "dependency_insight_exit_code": 0,
+  "native_install_and_launch": "Not performed; attached Android device unauthorized for ADB",
+  "ios_build": "Not performed; macOS builder required",
+  "store_products_and_purchases": "Not configured or exercised"
+}

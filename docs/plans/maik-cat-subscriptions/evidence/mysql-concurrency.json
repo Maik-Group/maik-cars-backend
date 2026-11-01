@@ -1,0 +1,201 @@
+{
+    "recorded_at": "2026-10-22T05:39:45+00:00",
+    "server": {
+        "hostname": "DESKTOP-E9S09JG",
+        "port": 3306,
+        "version": "8.4.3"
+    },
+    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+    "scenarios": {
+        "last_slot": {
+            "passed": true,
+            "used": 2,
+            "reveal_count": 2,
+            "results": [
+                {
+                    "pid": 23364,
+                    "connection_id": 103,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 50456,
+                    "connection_id": 106,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 46168,
+                    "connection_id": 107,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 12984,
+                    "connection_id": 108,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 25324,
+                    "connection_id": 105,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 51592,
+                    "connection_id": 109,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 27336,
+                    "connection_id": 110,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": true
+                },
+                {
+                    "pid": 27704,
+                    "connection_id": 104,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                }
+            ]
+        },
+        "same_family": {
+            "passed": true,
+            "used": 1,
+            "reveal_count": 1,
+            "results": [
+                {
+                    "pid": 44764,
+                    "connection_id": 111,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 13084,
+                    "connection_id": 113,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 51688,
+                    "connection_id": 114,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 27848,
+                    "connection_id": 115,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": true
+                },
+                {
+                    "pid": 16836,
+                    "connection_id": 112,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 44128,
+                    "connection_id": 116,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 18088,
+                    "connection_id": 117,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                },
+                {
+                    "pid": 32120,
+                    "connection_id": 118,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": false
+                }
+            ]
+        },
+        "initial_bucket": {
+            "passed": true,
+            "used": 1,
+            "reveal_count": 1,
+            "results": [
+                {
+                    "pid": 21240,
+                    "connection_id": 120,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 46972,
+                    "connection_id": 125,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 15572,
+                    "connection_id": 119,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 35020,
+                    "connection_id": 124,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 50376,
+                    "connection_id": 122,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 41476,
+                    "connection_id": 123,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 23416,
+                    "connection_id": 121,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 429,
+                    "code": "DAILY_QUOTA_EXHAUSTED"
+                },
+                {
+                    "pid": 44420,
+                    "connection_id": 126,
+                    "database": "maikcat_subscriptions_qa_33369e6ba31b55db",
+                    "status": 200,
+                    "counted": true
+                }
+            ]
+        }
+    },
+    "database_dropped": true
+}

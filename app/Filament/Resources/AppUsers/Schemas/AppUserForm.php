@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\AppUsers\Schemas;
 
 use App\Enums\PreferredLanguage;
+use App\Models\SubscriptionEntitlement;
 use App\Models\User;
+use App\Services\Subscriptions\DailyUsageService;
+use App\Services\Subscriptions\EntitlementResolver;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -19,6 +22,27 @@ class AppUserForm
     {
         return $schema
             ->components([
+                Section::make('Subscription access')->visible(fn (?User $record): bool => $record !== null && auth()->user()->can('view_subscriptions'))
+                    ->description('Store billing and administrative grants remain separate. Daily usage is shared across valid sources.')
+                    ->components([
+                        Placeholder::make('effective_subscription_access')->label('Effective access')->content(function (?User $record): string {
+                            if (! $record || ! $record->is_active) {
+                                return 'Inactive account';
+                            }
+                            $access = app(EntitlementResolver::class)->resolve($record);
+                            $usage = app(DailyUsageService::class)->status($record, $access);
+
+                            return ($access['active'] ? 'Active' : 'No active entitlement').' · Daily allowance: '.($access['limit'] ?? 'Unlimited').' · Used: '.$usage['used'].' · Resets: '.$usage['resets_at'];
+                        }),
+                        Placeholder::make('subscription_history')->label('Access history')->content(function (?User $record): HtmlString {
+                            if (! $record) {
+                                return new HtmlString('');
+                            }
+                            $rows = SubscriptionEntitlement::query()->with('agreement')->where('user_id', $record->id)->latest()->limit(20)->get();
+
+                            return new HtmlString($rows->map(fn ($source): string => '<div>'.e(implode(' · ', [$source->source, $source->environment, $source->starts_at->toIso8601String(), $source->ends_at->toIso8601String(), $source->revoked_at || $source->agreement?->suppressed_at ? 'Locally revoked' : ($source->agreement?->provider_state ?? 'Granted')])).'</div>')->implode(''));
+                        }),
+                    ]),
                 Section::make(__('admin.ui.app_users.account'))
                     ->description(__('admin.ui.app_users.account_description'))
                     ->columns([
