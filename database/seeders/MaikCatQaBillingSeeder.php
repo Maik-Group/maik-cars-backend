@@ -4,24 +4,31 @@ namespace Database\Seeders;
 
 use App\Models\AdminGrantBatch;
 use App\Models\BillingPlanPrice;
+use App\Models\CarGroup;
 use App\Models\ComplimentaryAllocation;
+use App\Models\CreditConsumption;
 use App\Models\CreditGrant;
+use App\Models\Item;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Credits\AdminGrantBatchService;
 use App\Services\Credits\ComplimentaryCreditService;
 use App\Services\Credits\CreditWalletService;
+use App\Services\Subscriptions\StripeBillingGateway;
+use App\Services\Subscriptions\StripeOfferCatalogService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 /**
  * Explicitly invoked on an existing database for QA fixtures.
  *
- * No existing user is changed, no Stripe payment identity is fabricated,
- * and no sample offer is published. Safe to re-run within the same QA period.
+ * Only QA accounts and sandbox credit buckets are created. Stripe checkout
+ * offers are published only when real test Price IDs are supplied and verified.
+ * Never forges Stripe payments, subscriptions, or webhook fulfillments.
  */
 class MaikCatQaBillingSeeder extends Seeder
 {
@@ -41,6 +48,16 @@ class MaikCatQaBillingSeeder extends Seeder
         'renewal_due' => 'qa-maik-renewal-due@example.test',
         'expired_only' => 'qa-maik-expired-only@example.test',
         'topup_only' => 'qa-maik-topup-only@example.test',
+        'low_balance' => 'qa-maik-low-balance@example.test',
+        'partially_used' => 'qa-maik-partially-used@example.test',
+        'exhausted' => 'qa-maik-exhausted@example.test',
+        'repeat_reveal' => 'qa-maik-repeat-reveal@example.test',
+        'paid_priority' => 'qa-maik-paid-priority@example.test',
+        'held_only' => 'qa-maik-held-only@example.test',
+        'revoked_only' => 'qa-maik-revoked-only@example.test',
+        'scheduled_free' => 'qa-maik-scheduled-free@example.test',
+        'revoked_free' => 'qa-maik-revoked-free@example.test',
+        'expired_free' => 'qa-maik-expired-free@example.test',
     ];
 
     public function run(): void
@@ -55,10 +72,20 @@ class MaikCatQaBillingSeeder extends Seeder
         } finally {
             config()->set('stripe_billing.environment', $originalEnvironment);
         }
+
+        if ($originalEnvironment !== 'sandbox') {
+            $this->command?->warn('QA credits are sandbox-only: configure STRIPE_SECRET_KEY with sk_test_ on the QA server to view them through API.');
+        }
     }
 
     private function seedSandboxFixtures(): void
     {
+        // Fresh QA databases may not have had the application role seeder run.
+        // Ensure only these two role identities exist; never rewrite the
+        // permissions of existing non-QA roles or accounts.
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('app_user', 'web');
+
         $file = storage_path('app/private/maik-qa-credentials.json');
         if (! is_dir(dirname($file)) && ! mkdir(dirname($file), 0700, true) && ! is_dir(dirname($file))) {
             throw new RuntimeException('Could not create private QA credential folder.');
@@ -98,6 +125,7 @@ class MaikCatQaBillingSeeder extends Seeder
             file_put_contents($temp, json_encode($known, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), LOCK_EX);
             rename($temp, $file);
         }
+        @chmod($file, 0600);
         foreach (self::ACCOUNTS as $scenario => $email) {
             if (($known['accounts'][$scenario]['email'] ?? null) !== $email || ! filled($known['accounts'][$scenario]['password'] ?? null)) {
                 throw new RuntimeException('QA credential manifest is incomplete or was modified.');
@@ -209,6 +237,57 @@ class MaikCatQaBillingSeeder extends Seeder
         $credit('expired_only', 'paid_cycle', 8, $month->subDay());
         $credit('topup_only', 'purchased_topup', 20);
 
+        // QA scenarios used by the Android valuation screen. Real catalog
+        // items are reused where possible, so live deployments do not acquire
+        // dummy products just to seed wallet consumption receipts.
+        $credit('low_balance', 'paid_cycle', 1, $paidExpiry);
+        $credit('partially_used', 'paid_cycle', 5, $paidExpiry);
+        $credit('exhausted', 'paid_cycle', 2, $paidExpiry);
+        $credit('repeat_reveal', 'paid_cycle', 3, $paidExpiry);
+        $credit('paid_priority', 'paid_cycle', 1, $paidExpiry);
+        $credit('paid_priority', 'free_grant', 2, $freeExpiry);
+        $credit('paid_priority', 'purchased_topup', 3);
+        $wallet->hold($credit('held_only', 'paid_cycle', 4, $paidExpiry), 'qa-entire-wallet-held');
+        $wallet->revoke($credit('revoked_only', 'free_grant', 4, $freeExpiry), 'qa-entire-wallet-revoked');
+
+        $items = Item::query()->apiVisible()->orderBy('id')->limit(200)->get()
+            ->unique(fn (Item $item) => Item::normalizeSerialValue($item->serial_code))->take(2)->values();
+        if ($items->count() < 2) {
+            // Empty dev/testing catalogs need self-contained QA objects.
+            // Existing populated catalogs are left completely unchanged.
+            $group = CarGroup::query()->firstOrCreate(['slug' => 'maik-qa-wallet-fixtures'], [
+                'name' => 'MAIK QA WALLET FIXTURES',
+                'excel_sheet_name' => 'MAIK QA WALLET FIXTURES',
+                'region' => 'QA', 'source' => 'maik-qa-billing',
+            ]);
+            foreach (['A', 'B'] as $suffix) {
+                Item::query()->firstOrCreate(['serial_code' => 'MAIK-QA-WALLET-'.$suffix], [
+                    'car_group_id' => $group->getKey(),
+                    'model' => 'QA WALLET FIXTURE', 'source' => 'maik-qa-billing',
+                    'weight_kg' => 1.2, 'pt_ppm' => 100, 'pd_ppm' => 150, 'rh_ppm' => 20,
+                ]);
+            }
+            $items = Item::query()->whereIn('serial_code', ['MAIK-QA-WALLET-A', 'MAIK-QA-WALLET-B'])->orderBy('serial_code')->get();
+        }
+
+        $spendOnceThisMonth = function (string $scenario, Item $item) use ($users, $wallet, $month): void {
+            // The daily receipt identity intentionally uses the real date. A
+            // rerun tomorrow must not spend that same QA scenario again.
+            if (CreditConsumption::query()->where('user_id', $users[$scenario]->id)
+                ->where('environment', 'sandbox')->where('item_id', $item->getKey())
+                ->where('usage_date', '>=', $month->toDateString())
+                ->where('usage_date', '<', $month->addMonthNoOverflow()->toDateString())->exists()) {
+                return;
+            }
+            $wallet->spend($users[$scenario], $item, 'sandbox');
+        };
+        $spendOnceThisMonth('partially_used', $items[0]);
+        $spendOnceThisMonth('partially_used', $items[1]);
+        $spendOnceThisMonth('exhausted', $items[0]);
+        $spendOnceThisMonth('exhausted', $items[1]);
+        $spendOnceThisMonth('repeat_reveal', $items[0]);
+        $spendOnceThisMonth('paid_priority', $items[0]);
+
         $start = $month;
         $end = $month->addMonthsNoOverflow(3);
         $comp = ComplimentaryAllocation::query()->where('user_id', $users['complimentary']->id)
@@ -219,6 +298,20 @@ class MaikCatQaBillingSeeder extends Seeder
         if (! ComplimentaryAllocation::query()->where('user_id', $users['once']->id)
             ->where('environment', 'sandbox')->where('issuance_mode', 'once')->exists()) {
             app(ComplimentaryCreditService::class)->enroll($users['once'], 4, 3, $start, $end, 'once', $plans[3], 'sandbox');
+        }
+        $complimentaryService = app(ComplimentaryCreditService::class);
+        if (! ComplimentaryAllocation::query()->where('user_id', $users['scheduled_free']->id)->where('environment', 'sandbox')->exists()) {
+            $complimentaryService->enroll($users['scheduled_free'], 5, 1,
+                $month->addMonthNoOverflow(), $month->addMonthsNoOverflow(3), 'per_period', $plans[1], 'sandbox');
+        }
+        if (! ComplimentaryAllocation::query()->where('user_id', $users['revoked_free']->id)->where('environment', 'sandbox')->exists()) {
+            $allocation = $complimentaryService->enroll($users['revoked_free'], 5, 1,
+                $month, $month->addMonthsNoOverflow(3), 'per_period', $plans[1], 'sandbox');
+            $allocation->update(['revoked_at' => CarbonImmutable::now('UTC')]);
+        }
+        if (! ComplimentaryAllocation::query()->where('user_id', $users['expired_free']->id)->where('environment', 'sandbox')->exists()) {
+            $complimentaryService->enroll($users['expired_free'], 5, 1,
+                $month->subMonthsNoOverflow(3), $month->subDay(), 'per_period', $plans[1], 'sandbox');
         }
         // Scheduler's allocateDue is intentionally environment-scoped and
         // does not grant historical cycles to users who were never enrolled.
@@ -266,10 +359,110 @@ class MaikCatQaBillingSeeder extends Seeder
             }
         }
 
+        $this->publishRealStripeTestOffersIfProvided($users['admin']);
+
+        $scenariosFile = storage_path('app/private/maik-qa-scenarios.json');
+        $report = [
+            'period' => $monthKey,
+            'billingEnvironment' => 'sandbox',
+            'checkoutNote' => 'Published offers require Stripe test Price IDs and verification. Native Checkout remains disabled by API policy.',
+            'valuationItemSamples' => $items->map(fn (Item $item) => [
+                'id' => $item->getKey(), 'serialCode' => $item->serial_code,
+            ])->all(),
+            'scenarioNotes' => [
+                'empty' => 'No subscription and no wallet credits (paywall)',
+                'free' => 'Manual free credits',
+                'paid' => 'Simulated paid-cycle wallet grant, not a real Stripe subscription',
+                'topup' => 'Top-up credits with no expiry',
+                'mixed' => 'Paid, free and top-up buckets in one wallet',
+                'complimentary' => 'Recurring complimentary plan allocation',
+                'once' => 'One-time complimentary allocation',
+                'expired' => 'Expired grant and explicitly revoked top-up',
+                'held' => 'Held paid credits, remaining available free credits',
+                'bulk' => 'Completed admin-grant batch; cancelled preview also exists',
+                'admin' => 'QA-only admin actor; temporary seeding permissions revoked',
+                'renewed' => 'Previous expired cycle plus current-cycle wallet credits',
+                'renewal_due' => 'Wallet credits expiring near first seeding time',
+                'expired_only' => 'Only expired paid-cycle credits',
+                'topup_only' => 'Only nonexpiring top-up credits',
+                'low_balance' => 'Exactly one available credit',
+                'partially_used' => 'Five paid credits; two distinct serial-family receipts',
+                'exhausted' => 'Two paid credits fully consumed; zero remaining',
+                'repeat_reveal' => 'One receipt; revealing same serial family on same UTC day is free',
+                'paid_priority' => 'Paid credit spent first; free and top-up still available',
+                'held_only' => 'All available grants on hold; paywall',
+                'revoked_only' => 'All available grants revoked; paywall',
+                'scheduled_free' => 'Complimentary allocation with future start; currently zero',
+                'revoked_free' => 'Complimentary allocation revoked before issuance',
+                'expired_free' => 'Complimentary allocation expired before issuance',
+            ],
+            'accounts' => collect($users)->map(fn (User $user, string $scenario) => [
+                'email' => $user->email, 'userId' => $user->id,
+                'walletBalance' => $wallet->balance($user, 'sandbox'),
+                'usageReceipts' => CreditConsumption::query()->where('user_id', $user->id)->where('environment', 'sandbox')->count(),
+            ])->all(),
+        ];
+        file_put_contents($scenariosFile, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), LOCK_EX);
+        @chmod($scenariosFile, 0600);
+
         $this->command?->info('Maik Cat QA data inserted/verified in the configured database. No Stripe charges.');
         foreach ($users as $scenario => $user) {
             $this->command?->line(sprintf('%-16s user_id=%d wallet=%d', $scenario, $user->id, $wallet->balance($user, 'sandbox')));
         }
         $this->command?->line('Private QA credentials: '.$file);
+        $this->command?->line('QA scenario report: '.$scenariosFile);
+    }
+
+    private function publishRealStripeTestOffersIfProvided(User $admin): void
+    {
+        $path = storage_path('app/private/maik-qa-stripe-prices.json');
+        if (! is_file($path)) {
+            return;
+        }
+        if (! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')) {
+            throw new RuntimeException('QA offer publication requires STRIPE_SECRET_KEY beginning with sk_test_.');
+        }
+
+        $prices = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+        if (! is_array($prices) || array_is_list($prices)) {
+            throw new RuntimeException('QA Stripe price manifest must map offer keys to Stripe test product and price IDs.');
+        }
+        $actorTemporaryPermission = ! $admin->can('manage_subscription_products');
+        if ($actorTemporaryPermission) {
+            Permission::findOrCreate('manage_subscription_products', 'web');
+            $admin->givePermissionTo('manage_subscription_products');
+        }
+        try {
+            foreach ($prices as $offerKey => $ids) {
+                if (! is_string($offerKey) || ! str_starts_with($offerKey, 'qa-') || ! is_array($ids)
+                    || ! is_string($ids['stripe_product_id'] ?? null) || ! str_starts_with($ids['stripe_product_id'], 'prod_')
+                    || ! is_string($ids['stripe_price_id'] ?? null) || ! str_starts_with($ids['stripe_price_id'], 'price_')) {
+                    throw new RuntimeException('Invalid QA test price manifest mapping for '.(string) $offerKey);
+                }
+                $offer = BillingPlanPrice::query()->where('environment', 'sandbox')
+                    ->where('offer_key', $offerKey)->where('revision', 1)->firstOrFail();
+                if ($offer->published_at) {
+                    if ($offer->stripe_product_id !== $ids['stripe_product_id'] || $offer->stripe_price_id !== $ids['stripe_price_id']) {
+                        throw new RuntimeException('Published QA offer cannot change Stripe identity: '.$offerKey);
+                    }
+
+                    continue;
+                }
+                if ($offer->stripe_price_id && $offer->stripe_price_id !== $ids['stripe_price_id']) {
+                    throw new RuntimeException('Existing QA offer has a different test Stripe price: '.$offerKey);
+                }
+                $offer->forceFill([
+                    'stripe_product_id' => $ids['stripe_product_id'],
+                    'stripe_price_id' => $ids['stripe_price_id'],
+                ])->save();
+                app(StripeOfferCatalogService::class)->verifyAndPublish(
+                    $admin, $offer, 'QA test price verified against Stripe', app(StripeBillingGateway::class),
+                );
+            }
+        } finally {
+            if ($actorTemporaryPermission) {
+                $admin->revokePermissionTo('manage_subscription_products');
+            }
+        }
     }
 }
