@@ -37,6 +37,10 @@ class MaikCatQaBillingSeeder extends Seeder
         'held' => 'qa-maik-held@example.test',
         'bulk' => 'qa-maik-bulk@example.test',
         'admin' => 'qa-maik-admin@example.test',
+        'renewed' => 'qa-maik-renewed@example.test',
+        'renewal_due' => 'qa-maik-renewal-due@example.test',
+        'expired_only' => 'qa-maik-expired-only@example.test',
+        'topup_only' => 'qa-maik-topup-only@example.test',
     ];
 
     public function run(): void
@@ -179,6 +183,18 @@ class MaikCatQaBillingSeeder extends Seeder
         $held = $credit('held', 'paid_cycle', 5, $paidExpiry);
         $wallet->hold($held, 'qa-pending-dispute');
         $credit('held', 'free_grant', 2, $freeExpiry);
+
+        // Additional deterministic wallet scenarios. A renewed account has an
+        // expired historical cycle and a current cycle; only the current one
+        // contributes to its spendable balance. These are QA wallet fixtures,
+        // not fabricated Stripe payment or subscription identities.
+        $credit('renewed', 'paid_cycle', 12, $paidExpiry);
+        $wallet->grant($users['renewed'], 'paid_cycle', 15,
+            'qa-local:'.$month->subMonthNoOverflow()->format('Ym').':renewed:previous_cycle',
+            $month->subDay(), 'sandbox');
+        $credit('renewal_due', 'paid_cycle', 2, CarbonImmutable::now('UTC')->addDays(2));
+        $credit('expired_only', 'paid_cycle', 8, $month->subDay());
+        $credit('topup_only', 'purchased_topup', 20);
 
         $start = $month;
         $end = $month->addMonthsNoOverflow(3);
