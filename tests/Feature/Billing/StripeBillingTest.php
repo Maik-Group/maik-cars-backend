@@ -168,6 +168,56 @@ it('creates prepaid term orders that do not renew and fulfills exactly once on v
     ], ['Idempotency-Key' => 'another-prepaid-term-123'])->assertStatus(409);
 });
 
+it('resumes an existing prepaid Stripe checkout instead of rejecting the Buy Plan button', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_resume']);
+        $mock->shouldReceive('checkout')->once()->andReturn([
+            'id' => 'cs_resume', 'url' => 'https://checkout.stripe.com/c/pay/resume',
+            'expires_at' => now()->addMinutes(30)->timestamp,
+        ]);
+    });
+    $payload = ['kind' => 'subscription', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile'];
+    $first = $this->postJson('/api/v1/billing/checkouts', $payload, [
+        'Idempotency-Key' => 'qa-resume-first-attempt',
+    ])->assertCreated();
+    $second = $this->postJson('/api/v1/billing/checkouts', $payload, [
+        'Idempotency-Key' => 'qa-resume-second-attempt',
+    ])->assertCreated()
+        ->assertJsonPath('data.checkoutUrl', 'https://checkout.stripe.com/c/pay/resume');
+    expect($second->json('data.orderId'))->toBe($first->json('data.orderId'))
+        ->and(BillingOrder::query()->count())->toBe(1);
+});
+
+it('does not resume an older renewable checkout as a new prepaid purchase', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    BillingOrder::query()->create([
+        'id' => (string) Str::uuid(), 'user_id' => $user->id, 'environment' => 'sandbox',
+        'billing_plan_price_id' => $offer->id, 'kind' => 'subscription',
+        'purchase_context_id' => 'web',
+        'idempotency_hash' => hash('sha256', 'older-web-session'),
+        'request_hash' => hash('sha256', 'older-web-session'),
+        'offer_snapshot' => ['credits' => 15, 'durationMonths' => 1, 'amountMinor' => 1900, 'currency' => 'USD'],
+        'stripe_checkout_session_id' => 'cs_legacy', 'status' => 'checkout_created',
+        'checkout_url' => 'https://checkout.stripe.com/c/pay/legacy',
+        'expires_at' => now()->addMinutes(20),
+    ]);
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldNotReceive('customer');
+        $mock->shouldNotReceive('checkout');
+    });
+    $this->postJson('/api/v1/billing/checkouts', [
+        'kind' => 'subscription', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile',
+    ], ['Idempotency-Key' => 'new-prepaid-after-legacy'])->assertStatus(409);
+    expect(BillingOrder::query()->count())->toBe(1);
+});
+
 it('refunded prepaid terms revoke their credits without creating negative wallet balances', function (): void {
     $offer = stripeOffer('subscription', 1);
     $user = User::factory()->create();

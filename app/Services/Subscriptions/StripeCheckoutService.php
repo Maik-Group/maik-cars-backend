@@ -148,9 +148,23 @@ class StripeCheckoutService
                     ->where(fn ($q) => $q->whereNull('period_end')->orWhere('period_end', '>', now('UTC')))->exists()) {
                     throw new HttpException(409, 'SUBSCRIPTION_EXISTS');
                 }
-                if (BillingOrder::query()->where('user_id', $user->getKey())
+                $pendingSubscriptionOrder = BillingOrder::query()->where('user_id', $user->getKey())
                     ->where('environment', $environment)->where('kind', 'subscription')
-                    ->whereIn('status', ['reserved', 'checkout_created', 'needs_reconciliation', 'paid'])->exists()) {
+                    ->whereIn('status', ['reserved', 'checkout_created', 'needs_reconciliation', 'paid'])
+                    ->latest('created_at')->first();
+                if ($pendingSubscriptionOrder) {
+                    // A second tap must resume the existing, unexpired Stripe
+                    // session rather than create another order or strand the
+                    // user with an unhelpful 409. Never resume an older
+                    // renewable Checkout as a new prepaid-term purchase.
+                    if ($pendingSubscriptionOrder->status === 'checkout_created'
+                        && (int) $pendingSubscriptionOrder->billing_plan_price_id === $priceId
+                        && ($pendingSubscriptionOrder->offer_snapshot['billingMode'] ?? null) === 'prepaid_term'
+                        && is_string($pendingSubscriptionOrder->checkout_url)
+                        && str_starts_with($pendingSubscriptionOrder->checkout_url, 'https://checkout.stripe.com/')
+                        && $pendingSubscriptionOrder->expires_at?->isFuture()) {
+                        return $pendingSubscriptionOrder;
+                    }
                     throw new HttpException(409, 'SUBSCRIPTION_CHECKOUT_IN_PROGRESS');
                 }
             }
