@@ -63,7 +63,8 @@ class StripeFulfillmentService
             || ($order->stripe_checkout_session_id && $order->stripe_checkout_session_id !== $sessionId)
             || (int) ($session['amount_total'] ?? -1) !== (int) $snapshot['amountMinor']
             || strtoupper((string) ($session['currency'] ?? '')) !== strtoupper($snapshot['currency'])
-            || ($session['mode'] ?? '') !== ($order->kind === 'topup' ? 'payment' : 'subscription')) {
+            || ($session['mode'] ?? '') !== ($order->kind === 'topup'
+                || ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term' ? 'payment' : 'subscription')) {
             throw new RuntimeException('Stripe checkout terms or customer mismatch.');
         }
 
@@ -102,7 +103,31 @@ class StripeFulfillmentService
                 $order->fulfillment_status = 'fulfilled';
                 $order->fulfilled_at = now('UTC');
             }
-            if ($mode === 'subscription') {
+            if ($mode === 'subscription' && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term' && $isPaid) {
+                if (! str_starts_with((string) $order->stripe_payment_intent_id, 'pi_')
+                    || $order->stripe_subscription_id !== null) {
+                    throw new RuntimeException('Prepaid term must be a confirmed one-time Stripe payment.');
+                }
+                if (DB::table('billing_refunds')->where('billing_order_id', $order->getKey())
+                    ->whereIn('status', ['pending', 'succeeded', 'needs_review'])->exists()) {
+                    throw new RuntimeException('Prepaid term is on refund hold.');
+                }
+                $months = (int) ($order->offer_snapshot['durationMonths'] ?? 0);
+                if (! in_array($months, [1, 3, 6, 12], true)) {
+                    throw new RuntimeException('Invalid prepaid term duration.');
+                }
+                $start = CarbonImmutable::now('UTC');
+                $end = $start->addMonthsNoOverflow($months);
+                $this->wallet->grant(User::findOrFail($order->user_id), 'paid_cycle',
+                    (int) $order->offer_snapshot['credits'],
+                    'stripe-term:'.$environment.':'.$order->getKey(), $end, $environment);
+                $order->period_start = $start;
+                $order->period_end = $end;
+                $order->status = 'fulfilled';
+                $order->fulfillment_status = 'fulfilled';
+                $order->fulfilled_at = now('UTC');
+            }
+            if ($mode === 'subscription' && ($order->offer_snapshot['billingMode'] ?? null) !== 'prepaid_term') {
                 if (! str_starts_with((string) $order->stripe_subscription_id, 'sub_')) {
                     throw new RuntimeException('Stripe subscription identity missing.');
                 }
@@ -303,16 +328,18 @@ class StripeFulfillmentService
             throw new RuntimeException('Refund lacks traceable payment intent.');
         }
         $invoice = BillingInvoice::query()->where('environment', $environment)->where('stripe_payment_intent_id', $intent)->first();
-        $order = $invoice ? null : BillingOrder::query()->where('environment', $environment)->where('kind', 'topup')
+        $order = $invoice ? null : BillingOrder::query()->where('environment', $environment)
             ->where('stripe_payment_intent_id', $intent)->first();
         if (! $invoice && ! $order) {
             throw new RuntimeException('Refund source not yet reconciled.');
         }
         $user = User::findOrFail($invoice?->user_id ?? $order->user_id);
-        $sourceType = $invoice ? 'paid_cycle' : 'purchased_topup';
+        $prepaid = $order && $order->kind === 'subscription'
+            && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
+        $sourceType = $invoice || $prepaid ? 'paid_cycle' : 'purchased_topup';
         $sourceKey = $invoice
             ? 'stripe-invoice:'.$environment.':'.$invoice->stripe_invoice_id
-            : 'stripe-topup:'.$environment.':'.$order->getKey();
+            : ($prepaid ? 'stripe-term:' : 'stripe-topup:').$environment.':'.$order->getKey();
         $status = (string) ($refund['status'] ?? '');
         if (! in_array($status, ['pending', 'requires_action', 'succeeded', 'failed', 'canceled'], true)) {
             throw new RuntimeException('Unsupported refund state.');
@@ -389,14 +416,16 @@ class StripeFulfillmentService
         $invoice = BillingInvoice::query()->where('environment', $environment)
             ->where('stripe_payment_intent_id', $intent)->first();
         $order = $invoice ? null : BillingOrder::query()->where('environment', $environment)
-            ->where('stripe_payment_intent_id', $intent)->where('kind', 'topup')->first();
+            ->where('stripe_payment_intent_id', $intent)->first();
         if (! $invoice && ! $order) {
             throw new RuntimeException('Disputed payment source needs reconciliation.');
         }
         $user = User::findOrFail($invoice?->user_id ?? $order->user_id);
-        $sourceType = $invoice ? 'paid_cycle' : 'purchased_topup';
+        $prepaid = $order && $order->kind === 'subscription'
+            && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
+        $sourceType = $invoice || $prepaid ? 'paid_cycle' : 'purchased_topup';
         $sourceKey = $invoice ? 'stripe-invoice:'.$environment.':'.$invoice->stripe_invoice_id
-            : 'stripe-topup:'.$environment.':'.$order->getKey();
+            : ($prepaid ? 'stripe-term:' : 'stripe-topup:').$environment.':'.$order->getKey();
         $status = (string) ($dispute['status'] ?? 'needs_response');
         DB::transaction(function () use ($user, $environment, $sourceType, $sourceKey, $status, $disputeId, $invoice, $order): void {
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();

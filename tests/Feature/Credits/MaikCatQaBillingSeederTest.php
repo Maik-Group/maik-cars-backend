@@ -75,7 +75,7 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
             ->and(ComplimentaryAllocation::query()->where('user_id', $scenarioUser('revoked_free')->id)->whereNotNull('revoked_at')->exists())->toBeTrue();
 
         $receipt = CreditConsumption::query()->where('user_id', $scenarioUser('repeat_reveal')->id)->firstOrFail();
-        expect($wallet->spend($scenarioUser('repeat_reveal'), Item::findOrFail($receipt->item_id), 'sandbox')['counted'])->toBeFalse();
+        expect($wallet->spend($scenarioUser('repeat_reveal'), Item::findOrFail($receipt->item_id), 'sandbox')['counted'])->toBeTrue();
 
         $report = json_decode((string) file_get_contents($storage.'/app/private/maik-qa-scenarios.json'), true, flags: JSON_THROW_ON_ERROR);
         expect($report['accounts']['exhausted']['walletBalance'])->toBe(0)

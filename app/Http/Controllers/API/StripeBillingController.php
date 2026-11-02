@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\BillingPlanPrice;
 use App\Models\BillingOrder;
+use App\Models\CreditGrant;
 use App\Models\BillingSubscription;
 use App\Models\StripeCustomer;
 use App\Services\Subscriptions\StripeBillingGateway;
@@ -90,6 +91,18 @@ class StripeBillingController extends Controller
         }
         $subscription = BillingSubscription::query()->where('user_id', $user->getKey())
             ->where('environment', $environment)->latest('id')->first();
+        $prepaid = BillingOrder::query()->where('user_id', $user->getKey())
+            ->where('environment', $environment)->where('kind', 'subscription')
+            ->where('status', 'fulfilled')->where('period_end', '>', now('UTC'))
+            ->latest('fulfilled_at')->limit(5)->get()->first(function (BillingOrder $order) use ($environment): bool {
+                return ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term'
+                    && CreditGrant::query()->where('environment', $environment)
+                        ->where('source_type', 'paid_cycle')
+                        ->where('source_key', 'stripe-term:'.$environment.':'.$order->getKey())
+                        ->whereNull('revoked_at')->whereNull('held_at')->exists();
+            });
+        $usePrepaid = $prepaid && (! $subscription || ! $subscription->period_end
+            || $subscription->period_end->lessThan($prepaid->period_end));
         $planName = $subscription ? BillingPlanPrice::query()->whereKey($subscription->billing_plan_price_id)
             ->where('environment', $environment)->first() : null;
         $comps = Schema::hasTable('complimentary_allocations')
@@ -104,7 +117,15 @@ class StripeBillingController extends Controller
             : [];
 
         return response()->json(['data' => [
-            'paidSubscription' => $subscription ? [
+            'paidSubscription' => $usePrepaid ? [
+                'status' => 'active',
+                'priceVersionId' => $prepaid->billing_plan_price_id,
+                'planName' => BillingPlanPrice::query()->find($prepaid->billing_plan_price_id)?->name,
+                'durationMonths' => (int) $prepaid->offer_snapshot['durationMonths'],
+                'periodStart' => $prepaid->period_start?->toIso8601String(),
+                'periodEnd' => $prepaid->period_end?->toIso8601String(),
+                'cancelAtPeriodEnd' => true, 'billingMode' => 'prepaid_term',
+            ] : ($subscription ? [
                 'status' => $subscription->status,
                 'priceVersionId' => $subscription->billing_plan_price_id,
                 'planName' => $planName?->name,
@@ -113,7 +134,8 @@ class StripeBillingController extends Controller
                 'periodEnd' => $subscription->period_end?->toIso8601String(),
                 'cancelAtPeriodEnd' => $subscription->cancel_at_period_end,
                 'pendingPriceVersionId' => $subscription->pending_price_id,
-            ] : null,
+                'billingMode' => 'legacy_subscription',
+            ] : null),
             'complimentaryEntitlements' => $comps,
         ]])->header('Cache-Control', 'private, no-store');
     }

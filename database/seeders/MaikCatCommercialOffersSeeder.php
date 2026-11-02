@@ -29,7 +29,7 @@ class MaikCatCommercialOffersSeeder extends Seeder
                 ['key' => $definition['key']],
                 ['name' => $definition['name'], 'tier_key' => $definition['key'],
                     'duration_months' => $definition['months'], 'service_level' => 1,
-                    'features' => ['valuation' => true], 'descriptions' => ['en' => $definition['credits'].' credits per billing period'],
+                    'features' => ['valuation' => true], 'descriptions' => ['en' => $definition['credits'].' prepaid credits for the selected access term; no automatic renewal'],
                     'is_active' => true, 'is_visible' => true, 'sort_order' => $definition['months']],
             );
             BillingPlanPrice::query()->firstOrCreate(

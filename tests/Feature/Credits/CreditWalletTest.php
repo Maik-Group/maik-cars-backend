@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(fn () => config(['stripe_billing.environment' => 'production']));
 
-it('grants idempotently and spends once per serial family per UTC day', function (): void {
+it('grants idempotently and charges each valuation even for the same serial family', function (): void {
     $user = User::factory()->create();
     $wallet = app(CreditWalletService::class);
     $first = $wallet->grant($user, 'paid_cycle', 2, 'invoice:1', CarbonImmutable::now('UTC')->addMonth());
@@ -25,20 +25,21 @@ it('grants idempotently and spends once per serial family per UTC day', function
     $item = Item::factory()->create(['serial_code' => 'ab-123', 'weight_kg' => 1, 'pt_ppm' => 1]);
     $other = Item::factory()->create(['serial_code' => 'AB 123', 'weight_kg' => 1, 'pt_ppm' => 1]);
     expect($wallet->spend($user, $item)['counted'])->toBeTrue()
-        ->and($wallet->spend($user, $other)['counted'])->toBeFalse()
-        ->and($wallet->balance($user))->toBe(1)
-        ->and(CreditConsumption::query()->count())->toBe(1);
+        ->and($wallet->spend($user, $other)['counted'])->toBeTrue()
+        ->and($wallet->balance($user))->toBe(0)
+        ->and(CreditConsumption::query()->count())->toBe(2);
 });
 
-it('preserves same-day receipt after its source grant expires', function (): void {
+it('accepts safe same-request retries but never free repeat valuations', function (): void {
     $user = User::factory()->create();
     $wallet = app(CreditWalletService::class);
     $grant = $wallet->grant($user, 'paid_cycle', 1, 'invoice:2', CarbonImmutable::now('UTC')->addHour());
     $item = Item::factory()->create(['serial_code' => 'receipt-1', 'weight_kg' => 1, 'pt_ppm' => 1]);
-    $wallet->spend($user, $item);
+    $wallet->spend($user, $item, null, false, 'stable-request-id-111');
     $grant->update(['expires_at' => CarbonImmutable::now('UTC')->subMinute()]);
-    expect($wallet->spend($user, $item)['counted'])->toBeFalse()
+    expect($wallet->spend($user, $item, null, false, 'stable-request-id-111')['counted'])->toBeFalse()
         ->and($wallet->balance($user))->toBe(0);
+    expect(fn () => $wallet->spend($user, $item))->toThrow(HttpException::class, 'INSUFFICIENT_CREDITS');
 });
 
 it('spends paid credits before complimentary and topups', function (): void {
@@ -118,14 +119,14 @@ it('holds and releases only its source bucket without changing ledger credit tot
         ->and(CreditLedgerEntry::query()->whereIn('entry_type', ['hold', 'release_hold'])->sum('amount'))->toBe(0);
 });
 
-it('rejects reopened receipt after revocation and keeps natural expiry reopen', function (): void {
+it('rejects retries of receipts revoked by a refund', function (): void {
     $user = User::factory()->create();
     $wallet = app(CreditWalletService::class);
     $grant = $wallet->grant($user, 'paid_cycle', 2, 'paid:revocation', null);
     $item = Item::factory()->create(['serial_code' => 'revoke-family']);
-    $wallet->spend($user, $item);
+    $wallet->spend($user, $item, null, false, 'revoked-request-key-111');
     $wallet->revoke($grant, 'refund');
-    expect(fn () => $wallet->spend($user, $item))->toThrow(HttpException::class, 'RECEIPT_REVOKED');
+    expect(fn () => $wallet->spend($user, $item, null, false, 'revoked-request-key-111'))->toThrow(HttpException::class, 'RECEIPT_REVOKED');
 });
 
 it('rejects mismatched expiry for repeated grants and accepts credits above former business cap', function (): void {

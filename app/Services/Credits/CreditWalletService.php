@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CreditWalletService
@@ -41,25 +42,32 @@ class CreditWalletService
         }, 3);
     }
 
-    public function spend(User $user, Item $item, ?string $environment = null, bool $validateExistingOnly = false): array
+    public function spend(User $user, Item $item, ?string $environment = null, bool $validateExistingOnly = false, ?string $idempotencyKey = null): array
     {
         $environment ??= config('stripe_billing.environment');
         $today = CarbonImmutable::now('UTC')->toDateString();
-        $serial = Item::normalizeSerialValue($item->normalized_serial ?: $item->serial_code);
-        $fingerprint = hash('sha256', $serial !== '' ? 'serial:'.$serial : 'item:'.$item->getKey());
+        if ($validateExistingOnly) {
+            throw new HttpException(409, 'REVEAL_REQUIRED');
+        }
+        if ($idempotencyKey !== null && (strlen($idempotencyKey) < 12 || strlen($idempotencyKey) > 200)) {
+            throw new HttpException(422, 'INVALID_IDEMPOTENCY_KEY');
+        }
+        // A fresh valuation always costs one credit regardless of its serial.
+        // Only a retry carrying the same request key is idempotent.
+        $fingerprint = hash('sha256', $idempotencyKey !== null
+            ? 'valuation-request:'.$idempotencyKey
+            : 'valuation-attempt:'.Str::uuid());
 
-        return DB::transaction(function () use ($user, $item, $environment, $today, $fingerprint, $validateExistingOnly): array {
+        return DB::transaction(function () use ($user, $item, $environment, $today, $fingerprint): array {
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             $receipt = CreditConsumption::query()->where('user_id', $user->getKey())->where('environment', $environment)
                 ->where('usage_date', $today)->where('serial_fingerprint', $fingerprint)->first();
-            if ($receipt && CreditGrant::query()->whereKey($receipt->credit_grant_id)->whereNull('revoked_at')->exists()) {
+            if ($receipt && (string) $receipt->item_id === (string) $item->getKey()
+                && CreditGrant::query()->whereKey($receipt->credit_grant_id)->whereNull('revoked_at')->exists()) {
                 return ['counted' => false, 'receipt_id' => $receipt->id, 'remaining' => $this->balance($user, $environment)];
             }
             if ($receipt) {
                 throw new HttpException(403, 'RECEIPT_REVOKED');
-            }
-            if ($validateExistingOnly) {
-                throw new HttpException(409, 'REVEAL_REQUIRED');
             }
             $grant = CreditGrant::query()->where('user_id', $user->getKey())->where('environment', $environment)
                 ->whereNull('revoked_at')->whereNull('held_at')->where('remaining', '>', 0)

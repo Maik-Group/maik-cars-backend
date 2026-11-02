@@ -30,8 +30,8 @@ class CreditValuationController extends Controller
         if ($revalidateDate !== null && $revalidateDate !== $viewDate) {
             throw new HttpException(409, 'REVEAL_REQUIRED');
         }
-        $receipt = $wallet->spend($request->user(), $item, null, $revalidateDate !== null);
-        $until = $now->copy()->addDay()->startOfDay()->toIso8601String();
+        $receipt = $wallet->spend($request->user(), $item, null, $revalidateDate !== null,
+            $request->header('Idempotency-Key'));
         $lease = $now->copy()->addSeconds(90)->min($now->copy()->addDay()->startOfDay())->toIso8601String();
 
         return response()->json([
@@ -44,7 +44,7 @@ class CreditValuationController extends Controller
             'wallet' => $receipt,
             'access' => [
                 'receiptId' => $receipt['receipt_id'], 'chargedCredits' => $receipt['counted'] ? 1 : 0,
-                'viewDateUtc' => $viewDate, 'freeReopenUntil' => $until, 'validUntil' => $lease,
+                'viewDateUtc' => $viewDate, 'validUntil' => $lease,
             ],
             'valid_until' => $lease,
         ])->header('Cache-Control', 'private, no-store');

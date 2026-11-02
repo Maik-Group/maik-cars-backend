@@ -42,17 +42,24 @@ class StripeBillingGateway
             throw new RuntimeException('A verified HTTPS Stripe return URL is required.');
         }
 
+        $prepaid = $order->kind === 'subscription'
+            && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
         $params = [
             'customer' => $customer,
             'client_reference_id' => $order->getKey(),
-            'mode' => $order->kind === 'subscription' ? 'subscription' : 'payment',
-            'line_items' => [['price' => $offer->stripe_price_id, 'quantity' => 1]],
+            'mode' => $order->kind === 'subscription' && ! $prepaid ? 'subscription' : 'payment',
+            // Prepaid term purchases never create renewable Stripe subscriptions.
+            // Price and product identity come exclusively from the verified offer.
+            'line_items' => [$prepaid
+                ? ['price_data' => ['product' => $offer->stripe_product_id,
+                    'currency' => strtolower($offer->currency), 'unit_amount' => $offer->amount_minor], 'quantity' => 1]
+                : ['price' => $offer->stripe_price_id, 'quantity' => 1]],
             'success_url' => $base.'?orderId='.$order->getKey().'&result=success',
             'cancel_url' => $base.'?orderId='.$order->getKey().'&result=cancel',
             'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => $order->environment],
             'expires_at' => now()->addMinutes(30)->timestamp,
         ];
-        if ($order->kind === 'subscription') {
+        if ($order->kind === 'subscription' && ! $prepaid) {
             $params['subscription_data'] = [
                 'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => $order->environment],
             ];

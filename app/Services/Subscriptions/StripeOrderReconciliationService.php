@@ -60,11 +60,13 @@ class StripeOrderReconciliationService
         $snapshot = $order->offer_snapshot;
         $customerId = is_string($matched['customer'] ?? null)
             ? $matched['customer'] : ($matched['customer']['id'] ?? null);
+        $prepaid = $order->kind === 'subscription'
+            && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
         if (($matched['client_reference_id'] ?? null) !== $order->getKey()
             || ($matched['metadata']['order_id'] ?? null) !== $order->getKey()
             || ($matched['metadata']['billing_environment'] ?? null) !== $order->environment
             || $customerId !== $mapping->stripe_customer_id
-            || ($matched['mode'] ?? null) !== ($order->kind === 'topup' ? 'payment' : 'subscription')
+            || ($matched['mode'] ?? null) !== ($order->kind === 'topup' || $prepaid ? 'payment' : 'subscription')
             || (int) ($matched['amount_total'] ?? -1) !== (int) $snapshot['amountMinor']
             || strtoupper((string) ($matched['currency'] ?? '')) !== strtoupper((string) $snapshot['currency'])) {
             throw new RuntimeException('Reconciled Checkout does not match its immutable local order.');
@@ -90,7 +92,7 @@ class StripeOrderReconciliationService
             // Subscriptions grant credits for a paid invoice, not a Checkout
             // redirect. When webhooks are delayed, retrieve that invoice from
             // Stripe and apply the exact same idempotent validated fulfillment.
-            if ($order->kind === 'subscription'
+            if ($order->kind === 'subscription' && ! $prepaid
                 && ($matched['payment_status'] ?? null) === 'paid') {
                 $subscriptionId = is_string($matched['subscription'] ?? null)
                     ? $matched['subscription'] : ($matched['subscription']['id'] ?? null);

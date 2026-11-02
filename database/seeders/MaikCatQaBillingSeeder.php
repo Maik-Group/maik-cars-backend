@@ -391,7 +391,7 @@ class MaikCatQaBillingSeeder extends Seeder
                 'low_balance' => 'Exactly one available credit',
                 'partially_used' => 'Five paid credits; two distinct serial-family receipts',
                 'exhausted' => 'Two paid credits fully consumed; zero remaining',
-                'repeat_reveal' => 'One receipt; revealing same serial family on same UTC day is free',
+                'repeat_reveal' => 'Previously revealed serial family; a new valuation charges another credit',
                 'paid_priority' => 'Paid credit spent first; free and top-up still available',
                 'held_only' => 'All available grants on hold; paywall',
                 'revoked_only' => 'All available grants revoked; paywall',

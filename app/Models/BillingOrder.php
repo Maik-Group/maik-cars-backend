@@ -17,6 +17,7 @@ class BillingOrder extends Model
 
     protected function casts(): array
     {
-        return ['offer_snapshot' => 'array', 'expires_at' => 'immutable_datetime', 'fulfilled_at' => 'immutable_datetime'];
+        return ['offer_snapshot' => 'array', 'expires_at' => 'immutable_datetime', 'fulfilled_at' => 'immutable_datetime',
+            'period_start' => 'immutable_datetime', 'period_end' => 'immutable_datetime'];
     }
 }

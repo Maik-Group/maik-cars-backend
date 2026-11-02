@@ -137,9 +137,15 @@ class StripeCheckoutService
                 throw new HttpException(409, 'OFFER_CHANGED');
             }
             if ($kind === 'subscription') {
+                if (BillingOrder::query()->where('user_id', $user->getKey())->where('environment', $environment)
+                    ->where('kind', 'subscription')->where('status', 'fulfilled')
+                    ->where('period_end', '>', now('UTC'))->exists()) {
+                    throw new HttpException(409, 'SUBSCRIPTION_EXISTS');
+                }
                 if (BillingSubscription::query()->where('user_id', $user->getKey())
                     ->where('environment', $environment)
-                    ->whereIn('status', ['incomplete', 'trialing', 'active', 'past_due', 'unpaid', 'paused'])->exists()) {
+                    ->whereIn('status', ['incomplete', 'trialing', 'active', 'past_due', 'unpaid', 'paused'])
+                    ->where(fn ($q) => $q->whereNull('period_end')->orWhere('period_end', '>', now('UTC')))->exists()) {
                     throw new HttpException(409, 'SUBSCRIPTION_EXISTS');
                 }
                 if (BillingOrder::query()->where('user_id', $user->getKey())
@@ -160,6 +166,7 @@ class StripeCheckoutService
                     'credits' => $offer->credits, 'durationMonths' => $offer->duration_months,
                     'amountMinor' => $offer->amount_minor, 'currency' => $offer->currency,
                     'priceId' => $offer->stripe_price_id, 'termsVersion' => $offer->terms_version,
+                    'billingMode' => $kind === 'subscription' ? 'prepaid_term' : 'topup',
                 ],
                 'status' => 'reserved',
             ]);

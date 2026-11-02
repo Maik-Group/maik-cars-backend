@@ -132,6 +132,70 @@ it('opens Stripe directly only for the explicit sandbox QA mobile context', func
     expect(BillingOrder::count())->toBe(1);
 });
 
+it('creates prepaid term orders that do not renew and fulfills exactly once on verified payment', function (): void {
+    $offer = stripeOffer('subscription', 3);
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_term']);
+        $mock->shouldReceive('checkout')->once()->withArgs(function ($order) {
+            expect($order->offer_snapshot['billingMode'])->toBe('prepaid_term');
+            return true;
+        })->andReturn(['id' => 'cs_term', 'url' => 'https://checkout.stripe.com/c/pay/prepaid',
+            'expires_at' => now()->addMinutes(30)->timestamp]);
+    });
+    $result = $this->postJson('/api/v1/billing/checkouts', [
+        'kind' => 'subscription', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile',
+    ], ['Idempotency-Key' => 'prepaid-term-test-123'])->assertCreated();
+    $order = BillingOrder::findOrFail($result->json('data.orderId'));
+    $session = ['id' => 'cs_term', 'client_reference_id' => $order->getKey(),
+        'customer' => 'cus_term', 'mode' => 'payment', 'status' => 'complete', 'payment_status' => 'paid',
+        'amount_total' => 1900, 'currency' => 'usd', 'payment_intent' => 'pi_term',
+        'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => 'sandbox']];
+    $fulfill = app(StripeFulfillmentService::class);
+    $fulfill->fulfillCheckout($session, 'sandbox');
+    $fulfill->fulfillCheckout($session, 'sandbox');
+    expect(app(CreditWalletService::class)->balance($user, 'sandbox'))->toBe(15)
+        ->and(CreditGrant::where('source_key', 'stripe-term:sandbox:'.$order->id)->count())->toBe(1)
+        ->and(BillingSubscription::count())->toBe(0)
+        ->and($order->fresh()->period_end)->not->toBeNull();
+    $this->getJson('/api/v1/billing/subscription')->assertOk()
+        ->assertJsonPath('data.paidSubscription.billingMode', 'prepaid_term')
+        ->assertJsonPath('data.paidSubscription.cancelAtPeriodEnd', true);
+    $this->postJson('/api/v1/billing/checkouts', [
+        'kind' => 'subscription', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile',
+    ], ['Idempotency-Key' => 'another-prepaid-term-123'])->assertStatus(409);
+});
+
+it('refunded prepaid terms revoke their credits without creating negative wallet balances', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create();
+    StripeCustomer::query()->create(['environment' => 'sandbox', 'user_id' => $user->id, 'stripe_customer_id' => 'cus_refundterm']);
+    $order = BillingOrder::query()->create([
+        'id' => (string) Str::uuid(), 'user_id' => $user->id, 'environment' => 'sandbox',
+        'billing_plan_price_id' => $offer->id, 'kind' => 'subscription',
+        'purchase_context_id' => 'web', 'idempotency_hash' => hash('sha256', 'term-refund'),
+        'request_hash' => hash('sha256', 'term-refund-request'),
+        'offer_snapshot' => ['billingMode' => 'prepaid_term', 'durationMonths' => 1,
+            'credits' => 15, 'amountMinor' => 1900, 'currency' => 'USD'],
+        'stripe_checkout_session_id' => 'cs_refundterm', 'status' => 'checkout_created',
+    ]);
+    $session = ['id' => 'cs_refundterm', 'client_reference_id' => $order->id,
+        'customer' => 'cus_refundterm', 'mode' => 'payment', 'status' => 'complete', 'payment_status' => 'paid',
+        'amount_total' => 1900, 'currency' => 'usd', 'payment_intent' => 'pi_refundterm',
+        'metadata' => ['order_id' => $order->id, 'billing_environment' => 'sandbox']];
+    app(StripeFulfillmentService::class)->fulfillCheckout($session, 'sandbox');
+    app(StripeFulfillmentService::class)->refund([
+        'id' => 're_refundterm', 'payment_intent' => 'pi_refundterm', 'amount' => 1900,
+        'currency' => 'usd', 'status' => 'succeeded',
+    ], 'sandbox');
+    expect(app(CreditWalletService::class)->balance($user, 'sandbox'))->toBe(0);
+    Sanctum::actingAs($user);
+    $this->getJson('/api/v1/billing/subscription')->assertOk()
+        ->assertJsonPath('data.paidSubscription', null);
+});
+
 it('recovers paid subscription invoices and updates credits from verified Stripe evidence', function (): void {
     $offer = stripeOffer('subscription', 1);
     $user = User::factory()->create(['is_active' => true]);
