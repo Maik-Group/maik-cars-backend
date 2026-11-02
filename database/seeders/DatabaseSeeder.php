@@ -17,12 +17,13 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         $this->call([
-            // CarGroupSeeder::class,
-            // MobileRealDataSeeder::class,
-            // MobileFakeDataSeeder::class,
+            CarGroupSeeder::class,
+            MobileRealDataSeeder::class,
+            MobileFakeDataSeeder::class,
             AppVersionSeeder::class,
             RolesAndPermissionsSeeder::class,
             AuthUserSeeder::class,
+            MaikCatQaBillingSeeder::class,
         ]);
     }
 }
