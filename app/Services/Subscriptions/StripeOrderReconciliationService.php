@@ -87,6 +87,29 @@ class StripeOrderReconciliationService
         }
         if (($matched['status'] ?? null) === 'complete') {
             $this->fulfillment->fulfillCheckout($matched, $order->environment);
+            // Subscriptions grant credits for a paid invoice, not a Checkout
+            // redirect. When webhooks are delayed, retrieve that invoice from
+            // Stripe and apply the exact same idempotent validated fulfillment.
+            if ($order->kind === 'subscription'
+                && ($matched['payment_status'] ?? null) === 'paid') {
+                $subscriptionId = is_string($matched['subscription'] ?? null)
+                    ? $matched['subscription'] : ($matched['subscription']['id'] ?? null);
+                if (is_string($subscriptionId) && str_starts_with($subscriptionId, 'sub_')) {
+                    $providerSubscription = $this->stripe->subscription($subscriptionId);
+                    $latestInvoice = $providerSubscription['latest_invoice'] ?? null;
+                    $invoiceId = is_string($latestInvoice) ? $latestInvoice : ($latestInvoice['id'] ?? null);
+                    if (($providerSubscription['id'] ?? null) !== $subscriptionId
+                        || (is_string($providerSubscription['customer'] ?? null)
+                            ? $providerSubscription['customer'] : ($providerSubscription['customer']['id'] ?? null))
+                        !== $mapping->stripe_customer_id) {
+                        throw new RuntimeException('Stripe subscription owner mismatch.');
+                    }
+                    if (is_string($invoiceId) && str_starts_with($invoiceId, 'in_')) {
+                        $invoice = $this->stripe->invoice($invoiceId);
+                        $this->fulfillment->fulfillInvoice($invoice, $order->environment);
+                    }
+                }
+            }
 
             return true;
         }

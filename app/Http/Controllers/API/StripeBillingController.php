@@ -4,10 +4,12 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\BillingPlanPrice;
+use App\Models\BillingOrder;
 use App\Models\BillingSubscription;
 use App\Models\StripeCustomer;
 use App\Services\Subscriptions\StripeBillingGateway;
 use App\Services\Subscriptions\StripeCheckoutService;
+use App\Services\Subscriptions\StripeOrderReconciliationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,16 +45,49 @@ class StripeBillingController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function checkoutStatus(Request $request, string $orderId, StripeCheckoutService $billing): JsonResponse
+    public function checkoutStatus(
+        Request $request, string $orderId,
+        StripeCheckoutService $billing, StripeOrderReconciliationService $reconciliation,
+    ): JsonResponse
     {
-        return response()->json(['data' => $billing->orderResponse($billing->orderFor($request->user(), $orderId))])
+        $order = $billing->orderFor($request->user(), $orderId);
+        if ($order->fulfillment_status !== 'fulfilled'
+            && ! in_array($order->status, ['expired', 'cancelled'], true)
+            && $order->stripe_checkout_session_id) {
+            try {
+                // Only Stripe's authenticated API can settle this order.
+                // Checkout return parameters never grant wallet credits.
+                $reconciliation->reconcile($order);
+                $order->refresh();
+            } catch (Throwable $error) {
+                report($error); // Signed webhook recovery remains authoritative.
+            }
+        }
+        return response()->json(['data' => $billing->orderResponse($order)])
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function subscription(Request $request, StripeCheckoutService $billing): JsonResponse
+    public function subscription(Request $request, StripeCheckoutService $billing, StripeOrderReconciliationService $reconciliation): JsonResponse
     {
         $user = $request->user();
         $environment = $billing->environment();
+        // Also recover successful purchases from older web handoffs that
+        // could not persist their order IDs in the native app. This is a
+        // bounded, owner-scoped recovery of Stripe evidence, never a grant
+        // based on the client's return URL.
+        $recent = BillingOrder::query()->where('user_id', $user->getKey())
+            ->where('environment', $environment)
+            ->whereIn('status', ['checkout_created', 'paid'])
+            ->whereNotNull('stripe_checkout_session_id')
+            ->where('created_at', '>=', now()->subDays(7))
+            ->latest('created_at')->limit(2)->get();
+        foreach ($recent as $order) {
+            try {
+                $reconciliation->reconcile($order);
+            } catch (Throwable $error) {
+                report($error);
+            }
+        }
         $subscription = BillingSubscription::query()->where('user_id', $user->getKey())
             ->where('environment', $environment)->latest('id')->first();
         $planName = $subscription ? BillingPlanPrice::query()->whereKey($subscription->billing_plan_price_id)

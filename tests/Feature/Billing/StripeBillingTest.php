@@ -111,6 +111,73 @@ it('rejects native app checkout contexts without making Stripe requests', functi
     expect(BillingOrder::count())->toBe(0);
 });
 
+it('opens Stripe directly only for the explicit sandbox QA mobile context', function (): void {
+    $offer = stripeOffer();
+    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_qa_direct']);
+        $mock->shouldReceive('checkout')->once()->andReturn([
+            'id' => 'cs_qa_direct', 'url' => 'https://checkout.stripe.com/c/pay/direct-test',
+            'expires_at' => now()->addMinutes(30)->timestamp,
+        ]);
+    });
+    $request = ['kind' => 'topup', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile'];
+    $this->postJson('/api/v1/billing/checkouts', $request, ['Idempotency-Key' => 'qa-direct-test-123'])
+        ->assertCreated()->assertJsonPath('data.checkoutUrl', 'https://checkout.stripe.com/c/pay/direct-test');
+    config()->set('stripe_billing.secret_key', 'sk_live_fake');
+    config()->set('stripe_billing.environment', 'production');
+    $this->postJson('/api/v1/billing/checkouts', $request, ['Idempotency-Key' => 'qa-direct-production-123'])
+        ->assertForbidden();
+    expect(BillingOrder::count())->toBe(1);
+});
+
+it('recovers paid subscription invoices and updates credits from verified Stripe evidence', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    StripeCustomer::query()->create([
+        'user_id' => $user->getKey(), 'environment' => 'sandbox', 'stripe_customer_id' => 'cus_recovery',
+    ]);
+    $order = BillingOrder::query()->create([
+        'id' => (string) Str::uuid(), 'user_id' => $user->getKey(), 'environment' => 'sandbox',
+        'billing_plan_price_id' => $offer->getKey(), 'kind' => 'subscription', 'purchase_context_id' => 'web',
+        'idempotency_hash' => hash('sha256', 'recover-key'), 'request_hash' => hash('sha256', 'recover-request'),
+        'offer_snapshot' => ['credits' => 15, 'amountMinor' => 1900, 'currency' => 'USD'],
+        'stripe_checkout_session_id' => 'cs_recover', 'status' => 'checkout_created',
+    ]);
+    $start = CarbonImmutable::now('UTC')->startOfDay();
+    $session = [
+        'id' => 'cs_recover', 'client_reference_id' => $order->getKey(),
+        'customer' => 'cus_recovery', 'mode' => 'subscription', 'status' => 'complete',
+        'payment_status' => 'paid', 'amount_total' => 1900, 'currency' => 'usd',
+        'subscription' => 'sub_recovery',
+        'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => 'sandbox'],
+    ];
+    $invoice = [
+        'id' => 'in_recovery', 'customer' => 'cus_recovery', 'subscription' => 'sub_recovery',
+        'status' => 'paid', 'paid_out_of_band' => false, 'collection_method' => 'charge_automatically',
+        'billing_reason' => 'subscription_create', 'amount_paid' => 1900, 'currency' => 'usd',
+        'payment_intent' => 'pi_recovery',
+        'lines' => ['has_more' => false, 'data' => [[
+            'quantity' => 1, 'period' => ['start' => $start->timestamp, 'end' => $start->addMonth()->timestamp],
+            'parent' => ['subscription_item_details' => ['subscription' => 'sub_recovery', 'proration' => false]],
+            'pricing' => ['price_details' => ['price' => 'price_test_1']],
+        ]]],
+    ];
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock) use ($session, $invoice): void {
+        $mock->shouldReceive('checkoutSession')->once()->with('cs_recover')->andReturn($session);
+        $mock->shouldReceive('subscription')->once()->with('sub_recovery')
+            ->andReturn(['id' => 'sub_recovery', 'customer' => 'cus_recovery', 'latest_invoice' => 'in_recovery']);
+        $mock->shouldReceive('invoice')->once()->with('in_recovery')->andReturn($invoice);
+    });
+    $this->getJson('/api/v1/billing/checkouts/'.$order->getKey())->assertOk()
+        ->assertJsonPath('data.fulfillmentStatus', 'fulfilled')
+        ->assertJsonPath('data.creditsGranted', 15);
+    expect(app(CreditWalletService::class)->balance($user, 'sandbox'))->toBe(15)
+        ->and($order->fresh()->status)->toBe('fulfilled');
+});
+
 it('rejects signed webhooks whose livemode differs from the Stripe secret key', function (): void {
     $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
         $mock->shouldReceive('verifyEvent')->twice()->andReturn(

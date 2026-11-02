@@ -24,6 +24,10 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             AuthUserSeeder::class,
             MaikCatQaBillingSeeder::class,
+            // Commercial sandbox offers are safe drafts. Publishing real
+            // Stripe Test prices remains an explicit operator action, never
+            // an implicit side effect of migrate:fresh --seed.
+            MaikCatCommercialOffersSeeder::class,
         ]);
     }
 }

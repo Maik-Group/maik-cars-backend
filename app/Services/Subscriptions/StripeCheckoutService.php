@@ -98,9 +98,11 @@ class StripeCheckoutService
 
     public function begin(User $user, string $kind, int $priceId, string $context, string $idempotency): BillingOrder
     {
-        // Hosted Checkout is currently authorized for the web purchase flow.
-        // Native store purchase contexts require a separate approved adapter.
-        if (! $this->isCheckoutConfigured() || $context !== 'web') {
+        // Direct hosted checkout from internal QA is permitted only with a
+        // Stripe test key. Store-distributed native contexts remain blocked.
+        $approvedContext = $context === 'web'
+            || ($context === 'qa-mobile' && $this->environment() === 'sandbox');
+        if (! $this->isCheckoutConfigured() || ! $approvedContext) {
             throw new HttpException(403, 'CHECKOUT_UNAVAILABLE');
         }
         if (! $user->is_active) {
@@ -223,6 +225,9 @@ class StripeCheckoutService
         ];
         if ($includeCheckoutUrl && $order->status === 'checkout_created') {
             $data['checkoutUrl'] = $order->checkout_url;
+        }
+        if ($order->fulfillment_status === 'fulfilled' && $order->payment_status === 'paid') {
+            $data['creditsGranted'] = (int) ($order->offer_snapshot['credits'] ?? 0);
         }
 
         return $data;
