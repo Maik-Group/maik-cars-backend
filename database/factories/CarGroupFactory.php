@@ -14,7 +14,7 @@ class CarGroupFactory extends Factory
 
     public function definition(): array
     {
-        $name = strtoupper(fake()->lexify('GROUP ???'));
+        $name = strtoupper(fake()->unique()->lexify('GROUP ???'));
 
         return [
             'name' => $name,
