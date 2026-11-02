@@ -127,6 +127,11 @@ class StripeBillingGateway
         return $this->client()->checkout->sessions->retrieve($id)->toArray();
     }
 
+    public function expireCheckoutSession(string $id): array
+    {
+        return $this->client()->checkout->sessions->expire($id)->toArray();
+    }
+
     public function checkoutSessionsForCustomer(string $customerId, ?string $startingAfter = null): array
     {
         $options = ['customer' => $customerId, 'limit' => 100];

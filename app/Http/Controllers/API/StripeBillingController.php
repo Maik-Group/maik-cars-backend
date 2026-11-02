@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\BillingPlanPrice;
 use App\Models\BillingOrder;
-use App\Models\CreditGrant;
+use App\Models\BillingPlanPrice;
 use App\Models\BillingSubscription;
+use App\Models\CreditGrant;
 use App\Models\StripeCustomer;
 use App\Services\Subscriptions\StripeBillingGateway;
 use App\Services\Subscriptions\StripeCheckoutService;
@@ -49,8 +49,7 @@ class StripeBillingController extends Controller
     public function checkoutStatus(
         Request $request, string $orderId,
         StripeCheckoutService $billing, StripeOrderReconciliationService $reconciliation,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $order = $billing->orderFor($request->user(), $orderId);
         if ($order->fulfillment_status !== 'fulfilled'
             && ! in_array($order->status, ['expired', 'cancelled'], true)
@@ -64,7 +63,24 @@ class StripeBillingController extends Controller
                 report($error); // Signed webhook recovery remains authoritative.
             }
         }
+
         return response()->json(['data' => $billing->orderResponse($order)])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function abandonCheckout(Request $request, string $orderId, StripeCheckoutService $billing): JsonResponse
+    {
+        $order = $billing->abandon($request->user(), $billing->orderFor($request->user(), $orderId));
+
+        return response()->json(['data' => $billing->orderResponse($order)])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function abandonLatestCheckout(Request $request, StripeCheckoutService $billing): JsonResponse
+    {
+        $order = $billing->abandonLatestPending($request->user());
+
+        return response()->json(['data' => $order ? $billing->orderResponse($order) : ['status' => 'none']])
             ->header('Cache-Control', 'private, no-store');
     }
 

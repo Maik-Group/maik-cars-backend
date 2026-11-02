@@ -24,6 +24,8 @@ Route::middleware(['auth:sanctum', 'throttle:subscription-purchases'])
     ->prefix('api/v1/billing')->group(function (): void {
         Route::post('web-handoff', [BillingWebController::class, 'issue']);
         Route::post('checkouts', [StripeBillingController::class, 'checkout']);
+        Route::post('checkouts/abandon-pending', [StripeBillingController::class, 'abandonLatestCheckout']);
+        Route::post('checkouts/{orderId}/abandon', [StripeBillingController::class, 'abandonCheckout']);
         Route::get('checkouts/{orderId}', [StripeBillingController::class, 'checkoutStatus']);
         Route::get('subscription', [StripeBillingController::class, 'subscription']);
         Route::post('customer-portal', [StripeBillingController::class, 'portal']);

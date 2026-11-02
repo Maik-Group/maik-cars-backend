@@ -15,7 +15,10 @@ use Throwable;
 
 class StripeCheckoutService
 {
-    public function __construct(private readonly StripeBillingGateway $stripe) {}
+    public function __construct(
+        private readonly StripeBillingGateway $stripe,
+        private readonly StripeFulfillmentService $fulfillment,
+    ) {}
 
     public function environment(): string
     {
@@ -237,6 +240,88 @@ class StripeCheckoutService
     {
         return BillingOrder::query()->whereKey($orderId)
             ->where('environment', $this->environment())->where('user_id', $user->getKey())->firstOrFail();
+    }
+
+    /**
+     * Explicitly abandon an unpaid Stripe-hosted Checkout when the buyer
+     * closes the payment screen or requests a fresh session.
+     * Never treat a browser close alone as evidence that payment failed.
+     */
+    public function abandon(User $user, BillingOrder $order): BillingOrder
+    {
+        $order = $this->orderFor($user, (string) $order->getKey());
+        if (in_array($order->status, ['expired', 'cancelled'], true)) {
+            return $order;
+        }
+        if (in_array($order->status, ['paid', 'fulfilled'], true)
+            || $order->payment_status === 'paid' || $order->fulfillment_status === 'fulfilled') {
+            throw new HttpException(409, 'PAYMENT_ALREADY_COMPLETED');
+        }
+        if (! is_string($order->stripe_checkout_session_id)
+            || ! str_starts_with($order->stripe_checkout_session_id, 'cs_')) {
+            // A reserved/ambiguous order may already exist in Stripe.
+            // It must be reconciled instead of deleting its evidence.
+            throw new HttpException(409, 'CHECKOUT_RECONCILIATION_REQUIRED');
+        }
+
+        try {
+            $session = $this->stripe->checkoutSession($order->stripe_checkout_session_id);
+            $mapping = StripeCustomer::query()->where('user_id', $user->getKey())
+                ->where('environment', $order->environment)->firstOrFail();
+            $customer = is_string($session['customer'] ?? null)
+                ? $session['customer'] : ($session['customer']['id'] ?? null);
+            $prepaid = $order->kind === 'subscription'
+                && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
+            if (($session['id'] ?? null) !== $order->stripe_checkout_session_id
+                || ($session['client_reference_id'] ?? null) !== $order->getKey()
+                || ($session['metadata']['order_id'] ?? null) !== $order->getKey()
+                || ($session['metadata']['billing_environment'] ?? null) !== $order->environment
+                || $customer !== $mapping->stripe_customer_id
+                || ($session['mode'] ?? null) !== ($order->kind === 'topup' || $prepaid ? 'payment' : 'subscription')
+                || (int) ($session['amount_total'] ?? -1) !== (int) $order->offer_snapshot['amountMinor']
+                || strtoupper((string) ($session['currency'] ?? '')) !== strtoupper((string) $order->offer_snapshot['currency'])) {
+                throw new RuntimeException('Checkout ownership or immutable order details mismatch.');
+            }
+            if (($session['status'] ?? null) === 'complete') {
+                // The webhook / order-status reconciliation processes this.
+                // Never expire or mark a completed payment as abandoned.
+                throw new HttpException(409, 'PAYMENT_ALREADY_COMPLETED');
+            }
+            if (($session['status'] ?? null) === 'expired') {
+                $this->fulfillment->expireCheckout($order->stripe_checkout_session_id, $order->environment, 'expired');
+
+                return $order->fresh();
+            }
+            if (($session['status'] ?? null) !== 'open') {
+                throw new RuntimeException('Stripe Checkout is not in an expirable state.');
+            }
+            $expired = $this->stripe->expireCheckoutSession($order->stripe_checkout_session_id);
+            if (($expired['id'] ?? null) !== $order->stripe_checkout_session_id
+                || ($expired['status'] ?? null) !== 'expired') {
+                throw new RuntimeException('Stripe did not confirm Checkout expiration.');
+            }
+            $this->fulfillment->expireCheckout($order->stripe_checkout_session_id, $order->environment, 'expired');
+
+            return $order->fresh();
+        } catch (HttpException $error) {
+            throw $error;
+        } catch (Throwable $error) {
+            report($error);
+            throw new HttpException(503, 'CHECKOUT_ABANDON_RETRY');
+        }
+    }
+
+    /** Recover the most recent pending order for this user, including older app builds. */
+    public function abandonLatestPending(User $user): ?BillingOrder
+    {
+        $environment = $this->environment();
+        $pending = BillingOrder::query()->where('user_id', $user->getKey())
+            ->where('environment', $environment)
+            ->where('kind', 'subscription')
+            ->whereIn('status', ['reserved', 'checkout_created', 'needs_reconciliation', 'paid'])
+            ->latest('created_at')->first();
+
+        return $pending ? $this->abandon($user, $pending) : null;
     }
 
     public function orderResponse(BillingOrder $order, bool $includeCheckoutUrl = false): array

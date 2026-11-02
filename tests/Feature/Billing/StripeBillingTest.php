@@ -271,6 +271,104 @@ it('does not resume an older renewable checkout as a new prepaid purchase', func
     expect(BillingOrder::query()->count())->toBe(1);
 });
 
+it('expires an abandoned prepaid Checkout at Stripe and permits a fresh purchase', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $orderId = null;
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock) use (&$orderId): void {
+        $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_abandoned']);
+        $mock->shouldReceive('checkout')->twice()->andReturnUsing(function () use (&$orderId) {
+            return ['id' => $orderId ? 'cs_second' : 'cs_first',
+                'url' => 'https://checkout.stripe.com/c/pay/fresh',
+                'expires_at' => now()->addMinutes(30)->timestamp];
+        });
+        $mock->shouldReceive('checkoutSession')->once()->with('cs_first')->andReturnUsing(function () use (&$orderId) {
+            return [
+                'id' => 'cs_first', 'client_reference_id' => $orderId, 'customer' => 'cus_abandoned',
+                'mode' => 'payment', 'status' => 'open', 'amount_total' => 1900, 'currency' => 'usd',
+                'metadata' => ['order_id' => $orderId, 'billing_environment' => 'sandbox'],
+            ];
+        });
+        $mock->shouldReceive('expireCheckoutSession')->once()->with('cs_first')
+            ->andReturn(['id' => 'cs_first', 'status' => 'expired']);
+    });
+    $body = ['kind' => 'subscription', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'qa-mobile'];
+    $created = $this->postJson('/api/v1/billing/checkouts', $body,
+        ['Idempotency-Key' => 'first-abandon-try-123'])->assertCreated();
+    $orderId = $created->json('data.orderId');
+    $this->postJson('/api/v1/billing/checkouts/'.$orderId.'/abandon')->assertOk()
+        ->assertJsonPath('data.status', 'expired');
+    $this->postJson('/api/v1/billing/checkouts/'.$orderId.'/abandon')->assertOk()
+        ->assertJsonPath('data.status', 'expired');
+    $new = $this->postJson('/api/v1/billing/checkouts', $body,
+        ['Idempotency-Key' => 'second-abandon-try-123'])->assertCreated();
+    expect($new->json('data.orderId'))->not->toBe($orderId);
+    expect(BillingOrder::query()->count())->toBe(2);
+});
+
+it('cannot abandon an already completed payment or another users Stripe Checkout', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $owner = User::factory()->create(['is_active' => true]);
+    $stranger = User::factory()->create(['is_active' => true]);
+    StripeCustomer::query()->create([
+        'user_id' => $owner->id, 'environment' => 'sandbox', 'stripe_customer_id' => 'cus_paid',
+    ]);
+    $order = BillingOrder::query()->create([
+        'id' => (string) Str::uuid(), 'user_id' => $owner->id, 'environment' => 'sandbox',
+        'billing_plan_price_id' => $offer->id, 'kind' => 'subscription', 'purchase_context_id' => 'qa-mobile',
+        'idempotency_hash' => hash('sha256', 'paid-123'), 'request_hash' => hash('sha256', 'paid-body'),
+        'offer_snapshot' => ['billingMode' => 'prepaid_term', 'amountMinor' => 1900, 'currency' => 'USD', 'credits' => 15],
+        'stripe_checkout_session_id' => 'cs_paid', 'status' => 'checkout_created',
+    ]);
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock) use ($order): void {
+        $mock->shouldReceive('checkoutSession')->once()->with('cs_paid')->andReturn([
+            'id' => 'cs_paid', 'client_reference_id' => $order->id, 'customer' => 'cus_paid',
+            'mode' => 'payment', 'status' => 'complete', 'payment_status' => 'paid',
+            'amount_total' => 1900, 'currency' => 'usd', 'payment_intent' => 'pi_paid',
+            'metadata' => ['order_id' => $order->id, 'billing_environment' => 'sandbox'],
+        ]);
+        $mock->shouldNotReceive('expireCheckoutSession');
+    });
+    Sanctum::actingAs($stranger);
+    $this->postJson('/api/v1/billing/checkouts/'.$order->id.'/abandon')->assertNotFound();
+    Sanctum::actingAs($owner);
+    $this->postJson('/api/v1/billing/checkouts/'.$order->id.'/abandon')
+        ->assertStatus(409);
+});
+
+it('recovers a pending unpaid Checkout from an older app session without a local order ID', function (): void {
+    $offer = stripeOffer('subscription', 1);
+    $user = User::factory()->create(['is_active' => true]);
+    StripeCustomer::query()->create([
+        'user_id' => $user->id, 'environment' => 'sandbox', 'stripe_customer_id' => 'cus_orphan',
+    ]);
+    $order = BillingOrder::query()->create([
+        'id' => (string) Str::uuid(), 'user_id' => $user->id, 'environment' => 'sandbox',
+        'billing_plan_price_id' => $offer->id, 'kind' => 'subscription',
+        'purchase_context_id' => 'qa-mobile',
+        'idempotency_hash' => hash('sha256', 'orphan-key'), 'request_hash' => hash('sha256', 'orphan-body'),
+        'offer_snapshot' => ['billingMode' => 'prepaid_term', 'amountMinor' => 1900, 'currency' => 'USD', 'credits' => 15],
+        'stripe_checkout_session_id' => 'cs_orphan', 'status' => 'checkout_created',
+    ]);
+    $this->mock(StripeBillingGateway::class, function (MockInterface $mock) use ($order): void {
+        $mock->shouldReceive('checkoutSession')->once()->with('cs_orphan')->andReturn([
+            'id' => 'cs_orphan', 'client_reference_id' => $order->id, 'customer' => 'cus_orphan',
+            'mode' => 'payment', 'status' => 'open', 'amount_total' => 1900, 'currency' => 'usd',
+            'metadata' => ['order_id' => $order->id, 'billing_environment' => 'sandbox'],
+        ]);
+        $mock->shouldReceive('expireCheckoutSession')->once()
+            ->andReturn(['id' => 'cs_orphan', 'status' => 'expired']);
+    });
+    Sanctum::actingAs($user);
+    $this->postJson('/api/v1/billing/checkouts/abandon-pending')->assertOk()
+        ->assertJsonPath('data.status', 'expired');
+    $this->postJson('/api/v1/billing/checkouts/abandon-pending')->assertOk()
+        ->assertJsonPath('data.status', 'none');
+    expect($order->fresh()->status)->toBe('expired');
+});
+
 it('refunded prepaid terms revoke their credits without creating negative wallet balances', function (): void {
     $offer = stripeOffer('subscription', 1);
     $user = User::factory()->create();
