@@ -42,6 +42,58 @@ beforeEach(function (): void {
     config()->set('stripe_billing.webhook_secret', 'whsec_test_fake');
 });
 
+it('renders one-time Stripe Checkout titles from immutable Laravel offer data, not old Stripe Product names', function (): void {
+    config()->set('stripe_billing.return_url', 'https://maik.example.test/billing/return');
+    foreach ([['subscription', 3], ['topup', 0]] as [$kind, $months]) {
+        $name = $kind === 'subscription' ? 'Quarterly Plan' : '30 Extra Credits';
+        $offer = BillingPlanPrice::query()->create([
+            'offer_key' => 'checkout-display-'.$kind, 'revision' => 1,
+            'environment' => 'sandbox', 'kind' => $kind, 'name' => $name,
+            'duration_months' => $months ?: null, 'credits' => 30,
+            'currency' => 'USD', 'amount_minor' => 2499, 'terms_version' => 'v1',
+            'offer_snapshot' => ['name' => $name, 'credits' => 30],
+            'stripe_product_id' => 'prod_old_QA_title_'.$kind,
+            'stripe_price_id' => 'price_old_QA_title_'.$kind,
+            'verified_at' => now('UTC'), 'published_at' => now('UTC'),
+        ]);
+        $order = new BillingOrder;
+        $order->forceFill([
+            'id' => (string) Str::uuid(),
+            'environment' => 'sandbox',
+            'kind' => $kind,
+            'offer_snapshot' => [
+                'name' => $name, 'billingMode' => $kind === 'subscription' ? 'prepaid_term' : 'topup',
+                'credits' => 30, 'durationMonths' => $months ?: null,
+                'currency' => 'USD', 'amountMinor' => 2499,
+            ],
+        ]);
+        $params = app(StripeBillingGateway::class)->checkoutSessionParameters($order, $offer, 'cus_test_1');
+        expect($params['mode'])->toBe('payment')
+            ->and($params['line_items'][0]['price_data']['product_data']['name'])->toBe($name)
+            ->and($params['line_items'][0]['price_data']['unit_amount'])->toBe(2499)
+            ->and($params['line_items'][0]['price_data']['currency'])->toBe('usd')
+            ->and($params['line_items'][0]['price_data']['product_data']['metadata']['maik_offer_key'])->toBe($offer->offer_key)
+            ->and($params['line_items'][0]['quantity'])->toBe(1);
+        expect($params['line_items'][0]['price_data'])->not->toHaveKey('product')
+            ->and($params['line_items'][0])->not->toHaveKey('price');
+    }
+});
+
+it('keeps a purchased offer title frozen in its checkout snapshot', function (): void {
+    config()->set('stripe_billing.return_url', 'https://maik.example.test/billing/return');
+    $offer = stripeOffer()->replicate();
+    $order = new BillingOrder;
+    $order->forceFill([
+        'id' => (string) Str::uuid(), 'kind' => 'topup',
+        'offer_snapshot' => ['name' => '10 Extra Credits', 'billingMode' => 'topup',
+            'amountMinor' => 399, 'currency' => 'USD'],
+    ]);
+    $offer->forceFill(['name' => 'Changed Draft Title', 'amount_minor' => 999]);
+    $params = app(StripeBillingGateway::class)->checkoutSessionParameters($order, $offer, 'cus_test_2');
+    expect($params['line_items'][0]['price_data']['product_data']['name'])->toBe('10 Extra Credits')
+        ->and($params['line_items'][0]['price_data']['unit_amount'])->toBe(399);
+});
+
 it('keeps Stripe checkout closed by default and makes catalog reading side-effect free', function (): void {
     stripeOffer();
     $response = $this->getJson('/api/v1/billing/plans')->assertOk();
@@ -141,6 +193,7 @@ it('creates prepaid term orders that do not renew and fulfills exactly once on v
         $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_term']);
         $mock->shouldReceive('checkout')->once()->withArgs(function ($order) {
             expect($order->offer_snapshot['billingMode'])->toBe('prepaid_term');
+
             return true;
         })->andReturn(['id' => 'cs_term', 'url' => 'https://checkout.stripe.com/c/pay/prepaid',
             'expires_at' => now()->addMinutes(30)->timestamp]);

@@ -151,10 +151,10 @@ class MaikCatQaBillingSeeder extends Seeder
         // Four fixed QA prices. If sk_test_ is configured they will be created
         // on Stripe and published; otherwise they remain safe local drafts.
         $terms = [
-            ['months' => 1, 'credits' => 15, 'minor' => 999],
-            ['months' => 3, 'credits' => 50, 'minor' => 2499],
-            ['months' => 6, 'credits' => 110, 'minor' => 4499],
-            ['months' => 12, 'credits' => 240, 'minor' => 7999],
+            ['months' => 1, 'name' => 'Monthly Plan', 'credits' => 15, 'minor' => 999],
+            ['months' => 3, 'name' => 'Quarterly Plan', 'credits' => 50, 'minor' => 2499],
+            ['months' => 6, 'name' => 'Semiannual Plan', 'credits' => 110, 'minor' => 4499],
+            ['months' => 12, 'name' => 'Annual Plan', 'credits' => 240, 'minor' => 7999],
         ];
         $plans = [];
         $offerKeys = [];
@@ -163,18 +163,18 @@ class MaikCatQaBillingSeeder extends Seeder
             $key = 'qa-wallet-'.$months.'m';
             $offerKeys[] = $key;
             $plans[$months] = SubscriptionPlan::query()->firstOrCreate(['key' => $key], [
-                'name' => 'QA '.$months.'-month credit plan (not for sale)',
+                'name' => $term['name'],
                 'tier_key' => 'qa-'.$months.'m',
                 'duration_months' => $months, 'service_level' => 1,
                 'daily_allowance' => null, 'features' => ['valuation' => true],
-                'descriptions' => ['en' => 'Local QA only. No real payment.'],
+                'descriptions' => ['en' => $term['credits'].' credits included for '.$months.' months. One-time payment; no automatic renewal.'],
                 'is_active' => true, 'is_visible' => false, 'sort_order' => 1000 + $months,
             ]);
             BillingPlanPrice::query()->firstOrCreate([
                 'environment' => 'sandbox', 'offer_key' => $key, 'revision' => 1,
             ], [
                 'subscription_plan_id' => $plans[$months]->id, 'kind' => 'subscription',
-                'name' => 'QA '.$months.' month — test price',
+                'name' => $term['name'],
                 'duration_months' => $months, 'credits' => $term['credits'],
                 'currency' => 'USD', 'amount_minor' => $term['minor'],
                 'terms_version' => 'qa-local-1',
@@ -189,7 +189,7 @@ class MaikCatQaBillingSeeder extends Seeder
             BillingPlanPrice::query()->firstOrCreate([
                 'environment' => 'sandbox', 'offer_key' => 'qa-topup-'.$topup['credits'], 'revision' => 1,
             ], [
-                'kind' => 'topup', 'name' => 'QA '.$topup['credits'].' credits — test price',
+                'kind' => 'topup', 'name' => $topup['credits'].' Extra Credits',
                 'duration_months' => null, 'credits' => $topup['credits'],
                 'currency' => 'USD', 'amount_minor' => $topup['minor'],
                 'terms_version' => 'qa-local-1',

@@ -177,6 +177,7 @@ class StripeCheckoutService
                 'idempotency_hash' => $keyHash, 'request_hash' => $requestHash,
                 'offer_snapshot' => [
                     'offerKey' => $offer->offer_key, 'revision' => $offer->revision,
+                    'name' => $offer->name,
                     'credits' => $offer->credits, 'durationMonths' => $offer->duration_months,
                     'amountMinor' => $offer->amount_minor, 'currency' => $offer->currency,
                     'priceId' => $offer->stripe_price_id, 'termsVersion' => $offer->terms_version,

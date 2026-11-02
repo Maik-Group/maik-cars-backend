@@ -5,6 +5,7 @@ namespace App\Services\Subscriptions;
 use App\Models\BillingOrder;
 use App\Models\BillingPlanPrice;
 use App\Models\User;
+use Database\Seeders\MaikCatCommercialOffersSeeder;
 use RuntimeException;
 use Stripe\StripeClient;
 use Stripe\Webhook;
@@ -37,6 +38,24 @@ class StripeBillingGateway
 
     public function checkout(BillingOrder $order, BillingPlanPrice $offer, string $customer): array
     {
+        $params = $this->checkoutSessionParameters($order, $offer, $customer);
+
+        return $this->client()->checkout->sessions->create(
+            $params,
+            ['idempotency_key' => 'maik-checkout-'.$order->getKey()],
+        )->toArray();
+    }
+
+    /**
+     * Build Stripe Checkout from the immutable backend offer selected for this order.
+     *
+     * Stripe Price IDs display the title of their existing Stripe Product, which
+     * may be stale (e.g. an old QA name). For non-renewing purchases, inline
+     * product_data ensures the customer sees the title stored in Laravel for
+     * the actual purchased offer without mutating any Stripe catalog products.
+     */
+    public function checkoutSessionParameters(BillingOrder $order, BillingPlanPrice $offer, string $customer): array
+    {
         $base = config('stripe_billing.return_url');
         if (! is_string($base) || ! str_starts_with($base, 'https://')) {
             throw new RuntimeException('A verified HTTPS Stripe return URL is required.');
@@ -44,15 +63,27 @@ class StripeBillingGateway
 
         $prepaid = $order->kind === 'subscription'
             && ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term';
+        $oneTime = $prepaid || $order->kind === 'topup';
+        $title = trim((string) ($order->offer_snapshot['name'] ?? $offer->name));
+        if ($oneTime && ($title === '' || mb_strlen($title) > 255)) {
+            throw new RuntimeException('Checkout offer must have a valid database title.');
+        }
         $params = [
             'customer' => $customer,
             'client_reference_id' => $order->getKey(),
-            'mode' => $order->kind === 'subscription' && ! $prepaid ? 'subscription' : 'payment',
-            // Prepaid term purchases never create renewable Stripe subscriptions.
-            // Price and product identity come exclusively from the verified offer.
-            'line_items' => [$prepaid
-                ? ['price_data' => ['product' => $offer->stripe_product_id,
-                    'currency' => strtolower($offer->currency), 'unit_amount' => $offer->amount_minor], 'quantity' => 1]
+            'mode' => $oneTime ? 'payment' : 'subscription',
+            'line_items' => [$oneTime
+                ? ['price_data' => [
+                    'currency' => strtolower((string) $order->offer_snapshot['currency']),
+                    'unit_amount' => (int) $order->offer_snapshot['amountMinor'],
+                    'product_data' => [
+                        'name' => $title,
+                        'metadata' => [
+                            'maik_offer_key' => (string) $offer->offer_key,
+                            'maik_offer_revision' => (string) $offer->revision,
+                        ],
+                    ],
+                ], 'quantity' => 1]
                 : ['price' => $offer->stripe_price_id, 'quantity' => 1]],
             'success_url' => $base.'?orderId='.$order->getKey().'&result=success',
             'cancel_url' => $base.'?orderId='.$order->getKey().'&result=cancel',
@@ -65,10 +96,7 @@ class StripeBillingGateway
             ];
         }
 
-        return $this->client()->checkout->sessions->create(
-            $params,
-            ['idempotency_key' => 'maik-checkout-'.$order->getKey()],
-        )->toArray();
+        return $params;
     }
 
     public function verifyEvent(string $rawBody, string $signature): array
@@ -192,7 +220,7 @@ class StripeBillingGateway
     private function assertCommercialTestOffer(BillingPlanPrice $offer): void
     {
         if ($offer->environment !== 'sandbox'
-            || ! in_array($offer->offer_key, array_column(\Database\Seeders\MaikCatCommercialOffersSeeder::OFFERS, 'key'), true)
+            || ! in_array($offer->offer_key, array_column(MaikCatCommercialOffersSeeder::OFFERS, 'key'), true)
             || ! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')
             || config('stripe_billing.environment') !== 'sandbox') {
             throw new RuntimeException('Commercial offer publication requires an approved sandbox offer and Stripe test mode.');
@@ -206,7 +234,9 @@ class StripeBillingGateway
 
         return $this->client()->products->create([
             'name' => $offer->name,
-            'description' => 'Maik Cat internal QA test offer. Not a live commercial product.',
+            'description' => $offer->kind === 'topup'
+                ? $offer->credits.' extra credits. One-time purchase.'
+                : $offer->credits.' credits for '.$offer->duration_months.' months. One-time prepaid plan, no automatic renewal.',
             'metadata' => [
                 'maik_offer_key' => $offer->offer_key,
                 'maik_revision' => (string) $offer->revision,
