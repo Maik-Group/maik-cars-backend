@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Mockery as MockeryFacade;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -33,6 +34,7 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
     app()->useStoragePath($storage);
     Queue::fake();
     config()->set('stripe_billing.environment', 'production');
+    config()->set('stripe_billing.secret_key', 'sk_live_not_used_for_qa_seeding');
     $this->travelTo(CarbonImmutable::parse('2026-11-01 12:00:00', 'UTC'));
 
     try {
@@ -115,42 +117,95 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
     }
 });
 
-it('publishes only real verified Stripe test prices supplied in a private manifest', function (): void {
+it('creates and publishes all seven real Stripe test prices without a manifest or duplicate API calls', function (): void {
     $this->seed(RolesAndPermissionsSeeder::class);
     $originalStorage = storage_path();
     $storage = sys_get_temp_dir().'/maik-qa-stripe-test-'.Str::random(16);
     app()->useStoragePath($storage);
-    File::ensureDirectoryExists($storage.'/app/private');
-    file_put_contents($storage.'/app/private/maik-qa-stripe-prices.json', json_encode([
-        'qa-wallet-1m' => ['stripe_product_id' => 'prod_qa_real_test', 'stripe_price_id' => 'price_qa_real_test'],
-    ], JSON_THROW_ON_ERROR));
     Queue::fake();
     config()->set('stripe_billing.secret_key', 'sk_test_qa_key');
     config()->set('stripe_billing.environment', 'sandbox');
     $this->travelTo(CarbonImmutable::parse('2026-11-01 12:00:00', 'UTC'));
 
     $gateway = $this->mock(StripeBillingGateway::class);
-    $gateway->shouldReceive('price')->once()->with('price_qa_real_test')->andReturn([
-        'id' => 'price_qa_real_test', 'active' => true, 'currency' => 'usd', 'unit_amount' => 999,
-        'product' => 'prod_qa_real_test', 'type' => 'recurring',
-        'recurring' => ['interval' => 'month', 'interval_count' => 1],
-    ]);
+    $offers = [
+        'qa-wallet-1m' => ['kind' => 'subscription', 'months' => 1, 'amount' => 999],
+        'qa-wallet-3m' => ['kind' => 'subscription', 'months' => 3, 'amount' => 2499],
+        'qa-wallet-6m' => ['kind' => 'subscription', 'months' => 6, 'amount' => 4499],
+        'qa-wallet-12m' => ['kind' => 'subscription', 'months' => 12, 'amount' => 7999],
+        'qa-topup-10' => ['kind' => 'topup', 'months' => null, 'amount' => 399],
+        'qa-topup-30' => ['kind' => 'topup', 'months' => null, 'amount' => 999],
+        'qa-topup-100' => ['kind' => 'topup', 'months' => null, 'amount' => 2499],
+    ];
+    foreach ($offers as $key => $terms) {
+        $gateway->shouldReceive('findQaPrice')->once()
+            ->with(MockeryFacade::on(fn (BillingPlanPrice $offer) => $offer->offer_key === $key))
+            ->andReturnNull();
+        $gateway->shouldReceive('createQaProduct')->once()
+            ->with(MockeryFacade::on(fn (BillingPlanPrice $offer) => $offer->offer_key === $key))
+            ->andReturn(['id' => 'prod_'.$key, 'livemode' => false]);
+        $gateway->shouldReceive('createQaPrice')->once()
+            ->with(MockeryFacade::on(fn (BillingPlanPrice $offer) => $offer->offer_key === $key), 'prod_'.$key)
+            ->andReturn(['id' => 'price_'.$key, 'livemode' => false]);
+        $gateway->shouldReceive('price')->once()->with('price_'.$key)->andReturn([
+            'id' => 'price_'.$key, 'active' => true, 'currency' => 'usd', 'unit_amount' => $terms['amount'],
+            'product' => 'prod_'.$key, 'type' => $terms['kind'] === 'subscription' ? 'recurring' : 'one_time',
+            'recurring' => $terms['kind'] === 'subscription'
+                ? ['interval' => 'month', 'interval_count' => $terms['months']] : null,
+        ]);
+    }
 
     try {
         $this->seed(MaikCatQaBillingSeeder::class);
-        $offer = BillingPlanPrice::query()->where('offer_key', 'qa-wallet-1m')->sole();
         $qaAdmin = User::query()->where('email', MaikCatQaBillingSeeder::ACCOUNTS['admin'])->firstOrFail();
-        expect($offer->checkoutEligible())->toBeTrue()
-            ->and($offer->environment)->toBe('sandbox')
+        expect(BillingPlanPrice::query()->where('environment', 'sandbox')->get()->every(fn (BillingPlanPrice $offer) => $offer->checkoutEligible()))->toBeTrue()
             ->and($qaAdmin->can('manage_subscription_products'))->toBeFalse()
-            ->and(BillingPlanPrice::query()->whereNotNull('published_at')->count())->toBe(1)
+            ->and(BillingPlanPrice::query()->whereNotNull('published_at')->count())->toBe(7)
             ->and(app(StripeCheckoutService::class)->catalog()['externalCheckoutAllowed'])->toBeFalse();
 
         $this->seed(MaikCatQaBillingSeeder::class);
-        expect(BillingPlanPrice::query()->whereNotNull('published_at')->count())->toBe(1)
+        expect(BillingPlanPrice::query()->whereNotNull('published_at')->count())->toBe(7)
             ->and($qaAdmin->fresh()->can('manage_subscription_products'))->toBeFalse();
     } finally {
         $this->travelBack();
+        app()->useStoragePath($originalStorage);
+        File::deleteDirectory($storage);
+    }
+});
+
+it('recovers already-created Stripe QA Prices by lookup key without creating duplicate products', function (): void {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $originalStorage = storage_path();
+    $storage = sys_get_temp_dir().'/maik-qa-recovered-price-'.Str::random(16);
+    app()->useStoragePath($storage);
+    Queue::fake();
+    config()->set('stripe_billing.secret_key', 'sk_test_qa_key');
+    config()->set('stripe_billing.environment', 'sandbox');
+    $gateway = $this->mock(StripeBillingGateway::class);
+    foreach (['qa-wallet-1m', 'qa-wallet-3m', 'qa-wallet-6m', 'qa-wallet-12m', 'qa-topup-10', 'qa-topup-30', 'qa-topup-100'] as $key) {
+        $gateway->shouldReceive('findQaPrice')->once()
+            ->with(MockeryFacade::on(fn (BillingPlanPrice $offer) => $offer->offer_key === $key))
+            ->andReturn(['id' => 'price_'.$key, 'product' => 'prod_'.$key, 'livemode' => false]);
+        $gateway->shouldReceive('price')->once()->with('price_'.$key)->andReturnUsing(
+            function () use ($key): array {
+                $offer = BillingPlanPrice::query()->where('offer_key', $key)->sole();
+
+                return [
+                    'id' => 'price_'.$key, 'product' => 'prod_'.$key, 'active' => true,
+                    'currency' => strtolower($offer->currency), 'unit_amount' => $offer->amount_minor,
+                    'type' => $offer->kind === 'subscription' ? 'recurring' : 'one_time',
+                    'recurring' => $offer->kind === 'subscription'
+                        ? ['interval' => 'month', 'interval_count' => $offer->duration_months] : null,
+                ];
+            },
+        );
+    }
+    $gateway->shouldNotReceive('createQaProduct');
+    $gateway->shouldNotReceive('createQaPrice');
+    try {
+        $this->seed(MaikCatQaBillingSeeder::class);
+        expect(BillingPlanPrice::query()->whereNotNull('published_at')->count())->toBe(7);
+    } finally {
         app()->useStoragePath($originalStorage);
         File::deleteDirectory($storage);
     }

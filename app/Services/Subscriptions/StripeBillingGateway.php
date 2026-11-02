@@ -122,6 +122,84 @@ class StripeBillingGateway
         return $this->client()->prices->retrieve($id)->toArray();
     }
 
+    /**
+     * Locate a previously created QA test price after a partial seeder run.
+     * Stripe lookup keys survive its short-lived API idempotency cache.
+     */
+    public function findQaPrice(BillingPlanPrice $offer): ?array
+    {
+        $this->assertQaOfferCreation($offer);
+        $result = $this->client()->prices->all([
+            'lookup_keys' => [$this->qaLookupKey($offer)],
+            'limit' => 2,
+        ])->toArray();
+        $prices = $result['data'] ?? [];
+        if (count($prices) > 1) {
+            throw new RuntimeException('Duplicate Stripe QA Price lookup key: '.$offer->offer_key);
+        }
+
+        return $prices[0] ?? null;
+    }
+
+    /** Create an actual Stripe *test-mode* product for one immutable QA offer. */
+    public function createQaProduct(BillingPlanPrice $offer): array
+    {
+        $this->assertQaOfferCreation($offer);
+
+        return $this->client()->products->create([
+            'name' => $offer->name,
+            'description' => 'Maik Cat internal QA test offer. Not a live commercial product.',
+            'metadata' => [
+                'maik_offer_key' => $offer->offer_key,
+                'maik_revision' => (string) $offer->revision,
+                'environment' => 'sandbox',
+            ],
+        ], ['idempotency_key' => 'maik-qa-product-'.$offer->offer_key.'-r'.$offer->revision])->toArray();
+    }
+
+    /** Create an actual Stripe *test-mode* price matching the seeded offer. */
+    public function createQaPrice(BillingPlanPrice $offer, string $productId): array
+    {
+        $this->assertQaOfferCreation($offer);
+        if (! str_starts_with($productId, 'prod_')) {
+            throw new RuntimeException('Invalid QA Stripe product ID.');
+        }
+        $params = [
+            'product' => $productId,
+            'currency' => strtolower($offer->currency),
+            'unit_amount' => $offer->amount_minor,
+            'lookup_key' => $this->qaLookupKey($offer),
+            'metadata' => [
+                'maik_offer_key' => $offer->offer_key,
+                'maik_revision' => (string) $offer->revision,
+                'environment' => 'sandbox',
+                'credits' => (string) $offer->credits,
+            ],
+        ];
+        if ($offer->kind === 'subscription') {
+            $params['recurring'] = ['interval' => 'month', 'interval_count' => $offer->duration_months];
+        }
+
+        return $this->client()->prices->create(
+            $params,
+            ['idempotency_key' => 'maik-qa-price-'.$offer->offer_key.'-r'.$offer->revision],
+        )->toArray();
+    }
+
+    private function qaLookupKey(BillingPlanPrice $offer): string
+    {
+        return 'maik-cat-'.$offer->offer_key.'-r'.$offer->revision;
+    }
+
+    private function assertQaOfferCreation(BillingPlanPrice $offer): void
+    {
+        if ($offer->environment !== 'sandbox' || ! str_starts_with($offer->offer_key, 'qa-')
+            || ! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')
+            || config('stripe_billing.environment') !== 'sandbox') {
+            throw new RuntimeException('Stripe QA product/price creation requires a sandbox offer and sk_test_ key.');
+        }
+    }
+
     public function portal(string $customer, string $configuration): array
     {
         $returnUrl = config('stripe_billing.portal_return_url');

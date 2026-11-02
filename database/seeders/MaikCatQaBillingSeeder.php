@@ -26,9 +26,9 @@ use Spatie\Permission\Models\Role;
 /**
  * Explicitly invoked on an existing database for QA fixtures.
  *
- * Only QA accounts and sandbox credit buckets are created. Stripe checkout
- * offers are published only when real test Price IDs are supplied and verified.
- * Never forges Stripe payments, subscriptions, or webhook fulfillments.
+ * QA accounts and sandbox credit buckets are created locally. With sk_test_
+ * configured, this also creates/verifies the 7 test Products/Prices on Stripe
+ * and publishes the offers. Never creates a live payment, subscription or invoice.
  */
 class MaikCatQaBillingSeeder extends Seeder
 {
@@ -148,8 +148,8 @@ class MaikCatQaBillingSeeder extends Seeder
             $users[$scenario] = $user;
         }
 
-        // Four catalog terms; these are NOT actual merchant prices and will
-        // remain unverified drafts with Checkout disabled.
+        // Four fixed QA prices. If sk_test_ is configured they will be created
+        // on Stripe and published; otherwise they remain safe local drafts.
         $terms = [
             ['months' => 1, 'credits' => 15, 'minor' => 999],
             ['months' => 3, 'credits' => 50, 'minor' => 2499],
@@ -157,9 +157,11 @@ class MaikCatQaBillingSeeder extends Seeder
             ['months' => 12, 'credits' => 240, 'minor' => 7999],
         ];
         $plans = [];
+        $offerKeys = [];
         foreach ($terms as $term) {
             $months = $term['months'];
             $key = 'qa-wallet-'.$months.'m';
+            $offerKeys[] = $key;
             $plans[$months] = SubscriptionPlan::query()->firstOrCreate(['key' => $key], [
                 'name' => 'QA '.$months.'-month credit plan (not for sale)',
                 'tier_key' => 'qa-'.$months.'m',
@@ -183,6 +185,7 @@ class MaikCatQaBillingSeeder extends Seeder
             ]);
         }
         foreach ([['credits' => 10, 'minor' => 399], ['credits' => 30, 'minor' => 999], ['credits' => 100, 'minor' => 2499]] as $topup) {
+            $offerKeys[] = 'qa-topup-'.$topup['credits'];
             BillingPlanPrice::query()->firstOrCreate([
                 'environment' => 'sandbox', 'offer_key' => 'qa-topup-'.$topup['credits'], 'revision' => 1,
             ], [
@@ -359,13 +362,13 @@ class MaikCatQaBillingSeeder extends Seeder
             }
         }
 
-        $this->publishRealStripeTestOffersIfProvided($users['admin']);
+        $this->publishStripeTestOffers($users['admin'], $offerKeys);
 
         $scenariosFile = storage_path('app/private/maik-qa-scenarios.json');
         $report = [
             'period' => $monthKey,
             'billingEnvironment' => 'sandbox',
-            'checkoutNote' => 'Published offers require Stripe test Price IDs and verification. Native Checkout remains disabled by API policy.',
+            'checkoutNote' => 'Stripe test Products/Prices are automatically created and published when sk_test_ is configured. Native Checkout remains disabled by API policy.',
             'valuationItemSamples' => $items->map(fn (Item $item) => [
                 'id' => $item->getKey(), 'serialCode' => $item->serial_code,
             ])->all(),
@@ -413,19 +416,15 @@ class MaikCatQaBillingSeeder extends Seeder
         $this->command?->line('QA scenario report: '.$scenariosFile);
     }
 
-    private function publishRealStripeTestOffersIfProvided(User $admin): void
+    private function publishStripeTestOffers(User $admin, array $offerKeys): void
     {
-        $path = storage_path('app/private/maik-qa-stripe-prices.json');
-        if (! is_file($path)) {
+        if (! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')) {
+            $this->command?->warn('QA offers remain drafts. To publish automatically, configure STRIPE_SECRET_KEY=sk_test_... (never sk_live_).');
+
             return;
         }
-        if (! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')) {
-            throw new RuntimeException('QA offer publication requires STRIPE_SECRET_KEY beginning with sk_test_.');
-        }
-
-        $prices = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
-        if (! is_array($prices) || array_is_list($prices)) {
-            throw new RuntimeException('QA Stripe price manifest must map offer keys to Stripe test product and price IDs.');
+        if (config('stripe_billing.environment') !== 'sandbox') {
+            throw new RuntimeException('QA Stripe offers may only be created in sandbox.');
         }
         $actorTemporaryPermission = ! $admin->can('manage_subscription_products');
         if ($actorTemporaryPermission) {
@@ -433,31 +432,59 @@ class MaikCatQaBillingSeeder extends Seeder
             $admin->givePermissionTo('manage_subscription_products');
         }
         try {
-            foreach ($prices as $offerKey => $ids) {
-                if (! is_string($offerKey) || ! str_starts_with($offerKey, 'qa-') || ! is_array($ids)
-                    || ! is_string($ids['stripe_product_id'] ?? null) || ! str_starts_with($ids['stripe_product_id'], 'prod_')
-                    || ! is_string($ids['stripe_price_id'] ?? null) || ! str_starts_with($ids['stripe_price_id'], 'price_')) {
-                    throw new RuntimeException('Invalid QA test price manifest mapping for '.(string) $offerKey);
-                }
+            $gateway = app(StripeBillingGateway::class);
+            $catalog = app(StripeOfferCatalogService::class);
+            foreach ($offerKeys as $offerKey) {
                 $offer = BillingPlanPrice::query()->where('environment', 'sandbox')
                     ->where('offer_key', $offerKey)->where('revision', 1)->firstOrFail();
                 if ($offer->published_at) {
-                    if ($offer->stripe_product_id !== $ids['stripe_product_id'] || $offer->stripe_price_id !== $ids['stripe_price_id']) {
-                        throw new RuntimeException('Published QA offer cannot change Stripe identity: '.$offerKey);
-                    }
-
                     continue;
                 }
-                if ($offer->stripe_price_id && $offer->stripe_price_id !== $ids['stripe_price_id']) {
-                    throw new RuntimeException('Existing QA offer has a different test Stripe price: '.$offerKey);
+                if ($offer->retired_at) {
+                    throw new RuntimeException('Retired QA offer must not be republished: '.$offerKey);
                 }
-                $offer->forceFill([
-                    'stripe_product_id' => $ids['stripe_product_id'],
-                    'stripe_price_id' => $ids['stripe_price_id'],
-                ])->save();
-                app(StripeOfferCatalogService::class)->verifyAndPublish(
-                    $admin, $offer, 'QA test price verified against Stripe', app(StripeBillingGateway::class),
-                );
+
+                // A stable Stripe Price lookup_key recovers from a network/DB
+                // failure between Stripe creation and persistence, even when
+                // Stripe's short-lived idempotency cache has expired.
+                if (! $offer->stripe_price_id) {
+                    $existingPrice = $gateway->findQaPrice($offer);
+                    if ($existingPrice !== null) {
+                        if (($existingPrice['livemode'] ?? true) !== false) {
+                            throw new RuntimeException('Stripe returned a non-test QA price: '.$offerKey);
+                        }
+                        $product = $existingPrice['product'] ?? null;
+                        if (is_array($product)) {
+                            $product = $product['id'] ?? null;
+                        }
+                        if (! is_string($product) || ! str_starts_with($product, 'prod_')
+                            || ! is_string($existingPrice['id'] ?? null) || ! str_starts_with($existingPrice['id'], 'price_')
+                            || ($offer->stripe_product_id && $offer->stripe_product_id !== $product)) {
+                            throw new RuntimeException('Existing QA Stripe price/product identity mismatch: '.$offerKey);
+                        }
+                        $offer->forceFill(['stripe_product_id' => $product, 'stripe_price_id' => $existingPrice['id']])->save();
+                    } else {
+                        if (! $offer->stripe_product_id) {
+                            $product = $gateway->createQaProduct($offer);
+                            if (! is_string($product['id'] ?? null) || ! str_starts_with($product['id'], 'prod_')
+                                || ($product['livemode'] ?? true) !== false) {
+                                throw new RuntimeException('Stripe returned an invalid/non-test QA product: '.$offerKey);
+                            }
+                            // Save first, so reruns after a failed price call
+                            // reuse this product instead of creating another.
+                            $offer->forceFill(['stripe_product_id' => $product['id']])->save();
+                        }
+                        $price = $gateway->createQaPrice($offer, $offer->stripe_product_id);
+                        if (! is_string($price['id'] ?? null) || ! str_starts_with($price['id'], 'price_')
+                            || ($price['livemode'] ?? true) !== false) {
+                            throw new RuntimeException('Stripe returned an invalid/non-test QA price: '.$offerKey);
+                        }
+                        $offer->forceFill(['stripe_price_id' => $price['id']])->save();
+                    }
+                }
+
+                $catalog->verifyAndPublish($admin, $offer, 'Automatically created and verified Stripe QA test offer', $gateway);
+                $this->command?->line('Stripe test offer published: '.$offerKey);
             }
         } finally {
             if ($actorTemporaryPermission) {

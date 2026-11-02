@@ -66,13 +66,16 @@ the same UTC month does not spend credits again. Credit amounts can naturally
 change when grants expire, the complimentary scheduler advances, or a tester
 manually spends credits. Rerunning does not reset balances.
 
-## Optional: real Stripe **test-mode** prices
+## Automatic Stripe **test-mode** offers (no JSON manifest)
 
-To show purchasable *web* test offers in `/api/v1/billing/plans`, first create
-real **test-mode** Stripe products/prices that match the immutable local
-terms. The seeder never creates prices remotely; it verifies existing Stripe
-Price IDs with the configured `sk_test_...` key. The seven offers are draft by
-default and cannot be purchased until Stripe verification succeeds.
+The seeder contains the exact 7 QA offer definitions. If the **effective**
+Laravel configuration has `STRIPE_SECRET_KEY=sk_test_...`, running
+`MaikCatQaBillingSeeder` creates matching Product and Price objects in your
+Stripe **test** account, saves their returned IDs to `billing_plan_prices`,
+verifies them through `StripeOfferCatalogService::verifyAndPublish`, and makes
+them available from `GET /api/v1/billing/plans`. No extra JSON mapping file is
+needed. If no test key is configured, the 7 offers remain local drafts; no
+network calls occur. **Live keys never create test offers.**
 
 | Offer key | Price | Stripe type |
 |---|---:|---|
@@ -84,28 +87,29 @@ default and cannot be purchased until Stripe verification succeeds.
 | qa-topup-30 | USD 9.99; 30 credits | One-time |
 | qa-topup-100 | USD 24.99; 100 credits | One-time |
 
-The amounts above are **QA fixture values, not commercial prices**. Create a
-private `storage/app/private/maik-qa-stripe-prices.json` with any subset of
-those offer keys, for example:
+The amounts above are **QA fixture values, not commercial prices**. Once the
+updated code is deployed on your dedicated QA server:
 
-```json
-{
-  "qa-wallet-1m": {
-    "stripe_product_id": "prod_REPLACE_WITH_TEST_PRODUCT_ID",
-    "stripe_price_id": "price_REPLACE_WITH_TEST_PRICE_ID"
-  },
-  "qa-topup-10": {
-    "stripe_product_id": "prod_REPLACE_WITH_OTHER_TEST_PRODUCT_ID",
-    "stripe_price_id": "price_REPLACE_WITH_OTHER_TEST_PRICE_ID"
-  }
-}
+```bash
+php artisan config:clear
+php artisan db:seed --class=MaikCatQaBillingSeeder --force
 ```
 
-With `STRIPE_SECRET_KEY=sk_test_...` in Laravel's **effective configuration**,
-rerun the seeder. Each mapping must match Stripe's active status, product,
-currency, amount, interval, and kind, or it is rejected. The normal audited
-offer-publishing service is used; a published offer cannot be edited or
-republished with another ID. **Never** use a live key for this manifest.
+Run the seeder **only on the intended QA database**, after reviewing the
+effective Stripe test configuration; never run it on live customer data
+accidentally. It does not create a Stripe charge, payment, customer
+subscription, invoice or any fake paid entitlement. Each price uses a
+deterministic Stripe `lookup_key` and each create call an idempotency key;
+re-running reuses already-published database records. If Stripe succeeded
+before the local record was saved, the stable lookup key recovers its Price.
+Partially saved Product IDs are also reused. An existing Stripe Price is
+reverified against immutable local currency, amount, kind, interval and
+Product ID before it can be published.
+
+Expected catalog: **4 published subscription terms and 3 one-time top-ups**.
+If the API still returns empty lists, check the effective Stripe key,
+exceptions in the seeding output, offer publication status and the active
+billing environment. Never substitute made-up `price_` values.
 
 Stripe must also have a correctly configured HTTPS return URL, a matching
 test webhook signing secret, and webhook delivery/reconciliation workers to
