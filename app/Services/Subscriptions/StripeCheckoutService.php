@@ -35,10 +35,18 @@ class StripeCheckoutService
     public function catalog(): array
     {
         $allowed = $this->isCheckoutConfigured();
+        $configurationReason = $this->checkoutConfigurationReason();
         $offers = BillingPlanPrice::query()->where('environment', $this->environment())
             ->whereNull('retired_at')
             ->whereNotNull('published_at')
             ->orderBy('kind')->orderBy('amount_minor')->get();
+        // Once commercial offers are published, QA fixtures must not appear
+        // in the customer-facing catalog. Preserve the existing catalog until
+        // at least one commercial offer is published, avoiding an empty store.
+        $commercial = $offers->reject(static fn (BillingPlanPrice $offer) => str_starts_with($offer->offer_key, 'qa-'));
+        if ($commercial->isNotEmpty()) {
+            $offers = $commercial->unique('offer_key');
+        }
         $map = static fn (BillingPlanPrice $price): array => [
             'priceVersionId' => $price->getKey(),
             'planId' => $price->subscription_plan_id,
@@ -49,6 +57,11 @@ class StripeCheckoutService
             'amountMinor' => $price->amount_minor,
             'termsVersion' => $price->terms_version,
             'checkoutEligible' => $allowed && $price->checkoutEligible(),
+            'checkoutUnavailableReason' => ! $allowed ? $configurationReason
+                : (! $price->published_at ? 'OFFER_NOT_PUBLISHED'
+                    : (! $price->verified_at ? 'OFFER_NOT_VERIFIED'
+                        : ($price->retired_at ? 'OFFER_RETIRED'
+                            : (! filled($price->stripe_price_id) ? 'STRIPE_PRICE_MISSING' : null)))),
         ];
 
         return [
@@ -56,17 +69,31 @@ class StripeCheckoutService
             'subscriptions' => $offers->where('kind', 'subscription')->map($map)->values()->all(),
             'topUps' => $offers->where('kind', 'topup')->map($map)->values()->all(),
             'externalCheckoutAllowed' => false,
+            'checkoutUnavailableReason' => $configurationReason,
         ];
     }
 
     public function isCheckoutConfigured(): bool
     {
-        $key = config('stripe_billing.secret_key');
+        return $this->checkoutConfigurationReason() === null;
+    }
 
-        return is_string($key)
-            && (str_starts_with($key, 'sk_test_') || str_starts_with($key, 'sk_live_'))
-            && is_string(config('stripe_billing.return_url'))
-            && str_starts_with(config('stripe_billing.return_url'), 'https://');
+    private function checkoutConfigurationReason(): ?string
+    {
+        $key = config('stripe_billing.secret_key');
+        if (! is_string($key) || (! str_starts_with($key, 'sk_test_') && ! str_starts_with($key, 'sk_live_'))) {
+            return 'CHECKOUT_NOT_CONFIGURED';
+        }
+        if (! is_string(config('stripe_billing.return_url')) || ! str_starts_with(config('stripe_billing.return_url'), 'https://')) {
+            return 'CHECKOUT_NOT_CONFIGURED';
+        }
+        // A successful Stripe payment without signed webhook processing cannot
+        // safely grant credits. Fail closed before creating such a checkout.
+        if (! is_string(config('stripe_billing.webhook_secret')) || ! str_starts_with(config('stripe_billing.webhook_secret'), 'whsec_')) {
+            return 'STRIPE_WEBHOOK_NOT_CONFIGURED';
+        }
+
+        return null;
     }
 
     public function begin(User $user, string $kind, int $priceId, string $context, string $idempotency): BillingOrder
@@ -99,6 +126,12 @@ class StripeCheckoutService
             }
             $offer = BillingPlanPrice::query()->whereKey($priceId)->where('environment', $environment)->first();
             if (! $offer || $offer->kind !== $kind || ! $offer->checkoutEligible()) {
+                throw new HttpException(409, 'OFFER_CHANGED');
+            }
+            if (str_starts_with($offer->offer_key, 'qa-')
+                && BillingPlanPrice::query()->where('environment', $environment)
+                    ->whereNotNull('published_at')->whereNull('retired_at')
+                    ->where('offer_key', 'not like', 'qa-%')->exists()) {
                 throw new HttpException(409, 'OFFER_CHANGED');
             }
             if ($kind === 'subscription') {

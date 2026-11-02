@@ -39,6 +39,7 @@ beforeEach(function (): void {
     config()->set('stripe_billing.environment', 'sandbox');
     config()->set('stripe_billing.secret_key', 'sk_test_fake');
     config()->set('stripe_billing.return_url', null);
+    config()->set('stripe_billing.webhook_secret', 'whsec_test_fake');
 });
 
 it('keeps Stripe checkout closed by default and makes catalog reading side-effect free', function (): void {
@@ -46,9 +47,26 @@ it('keeps Stripe checkout closed by default and makes catalog reading side-effec
     $response = $this->getJson('/api/v1/billing/plans')->assertOk();
     $response->assertJsonPath('data.topUps.0.credits', 15)
         ->assertJsonPath('data.topUps.0.checkoutEligible', false)
+        ->assertJsonPath('data.topUps.0.checkoutUnavailableReason', 'CHECKOUT_NOT_CONFIGURED')
+        ->assertJsonPath('data.checkoutUnavailableReason', 'CHECKOUT_NOT_CONFIGURED')
         ->assertJsonPath('data.externalCheckoutAllowed', false);
     expect(BillingOrder::query()->count())->toBe(0)
         ->and(CreditGrant::query()->count())->toBe(0);
+});
+
+it('disables checkout when a signed webhook secret is missing', function (): void {
+    stripeOffer();
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    config()->set('stripe_billing.webhook_secret', null);
+    $this->getJson('/api/v1/billing/plans')->assertOk()
+        ->assertJsonPath('data.topUps.0.checkoutEligible', false)
+        ->assertJsonPath('data.checkoutUnavailableReason', 'STRIPE_WEBHOOK_NOT_CONFIGURED');
+    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    $this->postJson('/api/v1/billing/checkouts', [
+        'kind' => 'topup', 'priceVersionId' => BillingPlanPrice::query()->sole()->id,
+        'purchaseContextId' => 'web',
+    ], ['Idempotency-Key' => 'webhook-not-configured'])->assertForbidden();
+    expect(BillingOrder::count())->toBe(0);
 });
 
 it('creates idempotent hosted topup checkout for the owner with immutable server prices', function (): void {

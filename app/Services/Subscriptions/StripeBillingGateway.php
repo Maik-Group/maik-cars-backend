@@ -141,6 +141,57 @@ class StripeBillingGateway
         return $prices[0] ?? null;
     }
 
+    public function findCommercialTestPrice(BillingPlanPrice $offer): ?array
+    {
+        $this->assertCommercialTestOffer($offer);
+        $result = $this->client()->prices->all(['lookup_keys' => [$this->qaLookupKey($offer)], 'limit' => 2])->toArray();
+        if (count($result['data'] ?? []) > 1) {
+            throw new RuntimeException('Duplicate commercial Stripe test price.');
+        }
+
+        return $result['data'][0] ?? null;
+    }
+
+    public function createCommercialTestProduct(BillingPlanPrice $offer): array
+    {
+        $this->assertCommercialTestOffer($offer);
+
+        return $this->client()->products->create([
+            'name' => $offer->name,
+            'metadata' => ['maik_offer_key' => $offer->offer_key, 'maik_revision' => (string) $offer->revision, 'environment' => 'sandbox'],
+        ], ['idempotency_key' => 'maik-commercial-test-product-'.$offer->offer_key.'-r'.$offer->revision])->toArray();
+    }
+
+    public function createCommercialTestPrice(BillingPlanPrice $offer, string $productId): array
+    {
+        $this->assertCommercialTestOffer($offer);
+        if (! str_starts_with($productId, 'prod_')) {
+            throw new RuntimeException('Invalid Stripe product ID.');
+        }
+        $params = [
+            'product' => $productId, 'currency' => strtolower($offer->currency),
+            'unit_amount' => $offer->amount_minor, 'lookup_key' => $this->qaLookupKey($offer),
+            'metadata' => ['maik_offer_key' => $offer->offer_key, 'maik_revision' => (string) $offer->revision, 'credits' => (string) $offer->credits],
+        ];
+        if ($offer->kind === 'subscription') {
+            $params['recurring'] = ['interval' => 'month', 'interval_count' => $offer->duration_months];
+        }
+
+        return $this->client()->prices->create($params, [
+            'idempotency_key' => 'maik-commercial-test-price-'.$offer->offer_key.'-r'.$offer->revision,
+        ])->toArray();
+    }
+
+    private function assertCommercialTestOffer(BillingPlanPrice $offer): void
+    {
+        if ($offer->environment !== 'sandbox'
+            || ! in_array($offer->offer_key, array_column(\Database\Seeders\MaikCatCommercialOffersSeeder::OFFERS, 'key'), true)
+            || ! str_starts_with((string) config('stripe_billing.secret_key'), 'sk_test_')
+            || config('stripe_billing.environment') !== 'sandbox') {
+            throw new RuntimeException('Commercial offer publication requires an approved sandbox offer and Stripe test mode.');
+        }
+    }
+
     /** Create an actual Stripe *test-mode* product for one immutable QA offer. */
     public function createQaProduct(BillingPlanPrice $offer): array
     {
