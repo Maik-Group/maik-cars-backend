@@ -23,10 +23,10 @@ class DatabaseSeeder extends Seeder
             AppVersionSeeder::class,
             RolesAndPermissionsSeeder::class,
             AuthUserSeeder::class,
-            MaikCatQaBillingSeeder::class,
-            // Commercial sandbox offers are safe drafts. Publishing real
-            // Stripe Test prices remains an explicit operator action, never
-            // an implicit side effect of migrate:fresh --seed.
+            // Seed only the real Maik Cat offer catalog by default. The QA
+            // wallet/account fixture seeder is an explicit opt-in for tests;
+            // it must not populate storefront offers during ordinary seeding.
+            // Stripe publication remains an explicit, guarded operator step.
             MaikCatCommercialOffersSeeder::class,
         ]);
     }

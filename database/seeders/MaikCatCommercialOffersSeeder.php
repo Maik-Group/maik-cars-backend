@@ -7,7 +7,7 @@ use App\Models\SubscriptionPlan;
 use Illuminate\Database\Seeder;
 
 /**
- * Creates proposed commercial catalog drafts for sandbox review.
+ * Creates the canonical Maik Cat commercial offer catalog in sandbox.
  * Published offers and previously assigned Stripe prices are never modified.
  */
 class MaikCatCommercialOffersSeeder extends Seeder
@@ -42,27 +42,36 @@ class MaikCatCommercialOffersSeeder extends Seeder
                     'credits' => $definition['credits'],
                     'currency' => 'USD',
                     'amount_minor' => $definition['amount'],
-                    'terms_version' => 'commercial-proposal-1',
+                    'terms_version' => 'maik-commercial-1',
                     'offer_snapshot' => [
                         'offer_key' => $definition['key'], 'revision' => 1,
                         'environment' => 'sandbox', 'kind' => $definition['kind'],
                         'name' => $definition['name'], 'duration_months' => $definition['months'],
                         'credits' => $definition['credits'], 'currency' => 'USD',
-                        'amount_minor' => $definition['amount'], 'terms_version' => 'commercial-proposal-1',
+                        'amount_minor' => $definition['amount'], 'terms_version' => 'maik-commercial-1',
                     ],
                 ],
             );
-            // Seeders may update a local draft that has never been linked to a
-            // Stripe price. Published/versioned offers are immutable by design.
-            if (! $offer->published_at && ! $offer->stripe_price_id && ! $offer->stripe_product_id
-                && $offer->name !== $definition['name']) {
+            // Keep only unlinked drafts synchronized with the PHP seeder.
+            // Published Stripe prices and orders are immutable historical data.
+            if (! $offer->published_at && ! $offer->stripe_price_id && ! $offer->stripe_product_id) {
                 $offer->forceFill([
                     'name' => $definition['name'],
-                    'offer_snapshot' => [...($offer->offer_snapshot ?? []), 'name' => $definition['name']],
+                    'credits' => $definition['credits'],
+                    'amount_minor' => $definition['amount'],
+                    'duration_months' => $definition['months'],
+                    'terms_version' => 'maik-commercial-1',
+                    'offer_snapshot' => [
+                        'offer_key' => $definition['key'], 'revision' => $offer->revision,
+                        'environment' => 'sandbox', 'kind' => $definition['kind'],
+                        'name' => $definition['name'], 'duration_months' => $definition['months'],
+                        'credits' => $definition['credits'], 'currency' => 'USD',
+                        'amount_minor' => $definition['amount'], 'terms_version' => 'maik-commercial-1',
+                    ],
                 ])->save();
             }
         }
 
-        $this->command?->info('Seven commercial sandbox offer drafts prepared. Verify Stripe products and prices before publication.');
+        $this->command?->info('Seven Maik Cat commercial sandbox offers prepared. Publish with the guarded Stripe test command.');
     }
 }
