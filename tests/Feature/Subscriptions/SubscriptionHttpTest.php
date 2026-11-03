@@ -3,6 +3,7 @@
 use App\Models\Item;
 use App\Models\SubscriptionEntitlement;
 use App\Models\User;
+use App\Services\Credits\CreditWalletService;
 use App\Services\Mobile\ItemPriceSettingsService;
 use App\Services\Mobile\MetalsSpotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,7 +39,7 @@ test('all ordinary catalog paths redact protected values without consuming usage
     $this->assertDatabaseCount('daily_usage', 0);
 });
 
-test('reveal returns discounted existing pricing and atomically counts the item family', function (): void {
+test('legacy daily entitlements no longer allow opening product valuations without a paid search', function (): void {
     $user = User::factory()->create(['discount_margin_percent' => -10]);
     Sanctum::actingAs($user);
     SubscriptionEntitlement::query()->create([
@@ -47,39 +48,38 @@ test('reveal returns discounted existing pricing and atomically counts the item 
     ]);
     $item = Item::factory()->create(['serial_code' => 'HTTP-1', 'weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
     $route = '/api/v1/items/'.$item->id.'/valuation';
-    $this->postJson($route, ['currency' => 'USD'])->assertOk()
-        ->assertJsonPath('data.price', 0.9)->assertJsonPath('data.basePrice', 1)
-        ->assertJsonPath('usage.counted', true)->assertJsonPath('usage.remaining', 0);
-    $this->postJson($route)->assertOk()->assertJsonPath('usage.counted', false);
-    $other = Item::factory()->create(['serial_code' => 'HTTP-2']);
-    $this->postJson('/api/v1/items/'.$other->id.'/valuation')->assertStatus(429)
-        ->assertJsonPath('code', 'DAILY_QUOTA_EXHAUSTED')->assertJsonMissingPath('data');
-    $this->assertDatabaseCount('daily_usage_reveals', 1);
+    $this->postJson($route, ['currency' => 'USD'])->assertStatus(422)->assertJsonMissingPath('data');
+    $this->assertDatabaseCount('daily_usage_reveals', 0);
+    $this->assertDatabaseCount('credit_consumptions', 0);
 });
 
-test('reveal rejects guests missing access inactive accounts and hidden items without exposing assays', function (): void {
+test('legacy valuations require authentication and a search receipt without leaking assays', function (): void {
     $item = Item::factory()->create();
     $route = '/api/v1/items/'.$item->id.'/valuation';
     $this->postJson($route)->assertUnauthorized();
     $user = User::factory()->create();
     Sanctum::actingAs($user);
-    $this->postJson($route)->assertForbidden()->assertJsonPath('code', 'SUBSCRIPTION_REQUIRED')->assertJsonMissingPath('data');
+    $this->postJson($route)->assertStatus(422)->assertJsonMissingPath('data');
     $user->update(['is_active' => false]);
-    $this->postJson($route)->assertForbidden()->assertJsonPath('code', 'ACCOUNT_INACTIVE');
+    $this->postJson($route, ['searchId' => '00000000-0000-4000-8000-000000000001'])->assertForbidden();
     $item->update(['weight_kg' => 0]);
-    $this->postJson($route)->assertNotFound();
+    $this->postJson($route)->assertStatus(422);
     $this->assertDatabaseCount('daily_usage', 0);
 });
 
-test('valuation failure consumes no allowance and protected item access remains enforced', function (): void {
+test('a search whose valuation cannot be calculated costs no credit', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
     $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
+    app(CreditWalletService::class)
+        ->grant($user, 'paid_cycle', 1, 'legacy-search-unavailable', now('UTC')->toImmutable()->addDay());
     $spot = Mockery::mock(MetalsSpotService::class);
     $spot->shouldReceive('all')->andReturn(['data' => []]);
     app()->instance(MetalsSpotService::class, $spot);
-    $this->postJson('/api/v1/items/'.$item->id.'/valuation')->assertStatus(503)->assertJsonPath('code', 'VALUATION_UNAVAILABLE');
+    $this->postJson('/api/v2/items/search', ['text' => $item->serial_code],
+        ['Idempotency-Key' => 'failed-search-price-1234'])->assertStatus(503);
     $this->assertDatabaseCount('daily_usage', 0);
+    $this->assertDatabaseCount('credit_consumptions', 0);
     $this->getJson('/api/items/'.$item->id)->assertOk()->assertJsonPath('data.access.valuationRequired', true);
 });
 

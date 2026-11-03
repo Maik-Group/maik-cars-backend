@@ -26,24 +26,19 @@ beforeEach(function (): void {
     app()->instance(MetalsSpotService::class, $spot);
 });
 
-it('returns 402 without a debit and returns a 90 second lease on paid reveal', function (): void {
+it('requires a paid search receipt before product valuation and never directly charges a credit', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
     $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
     $route = '/api/v2/items/'.$item->id.'/valuation';
-    $this->postJson($route)->assertStatus(402)->assertJsonMissingPath('data');
+    $this->postJson($route)->assertStatus(422)->assertJsonMissingPath('data');
     $this->assertDatabaseCount('credit_consumptions', 0);
     app(CreditWalletService::class)->grant($user, 'paid_cycle', 1, 'invoice:http', now('UTC')->toImmutable()->addDay());
-    $result = $this->postJson($route)->assertOk()
-        ->assertJsonPath('access.chargedCredits', 1)
-        ->assertJsonPath('access.viewDateUtc', '2026-11-01')
-        ->assertJsonPath('access.validUntil', '2026-11-01T23:59:30+00:00')
-        ->assertJsonMissingPath('access.freeReopenUntil');
-    expect($result->json('wallet.counted'))->toBeTrue();
-    $this->assertDatabaseCount('credit_consumptions', 1);
+    $this->postJson($route)->assertStatus(422)->assertJsonMissingPath('data');
+    $this->assertDatabaseCount('credit_consumptions', 0);
 });
 
-it('charges another credit for the same item but rejects the former free reopen contract', function (): void {
+it('never charges repeat legacy product open attempts or accepts obsolete revalidation', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
     $wallet = app(CreditWalletService::class);
@@ -51,14 +46,14 @@ it('charges another credit for the same item but rejects the former free reopen 
     $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
     $other = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
     $route = '/api/v2/items/'.$item->id.'/valuation';
-    $this->postJson($route)->assertOk()->assertJsonPath('access.chargedCredits', 1);
-    $this->postJson($route)->assertOk()->assertJsonPath('access.chargedCredits', 1);
-    $this->postJson($route, ['revalidate_date' => '2026-11-01'])->assertStatus(409);
-    $this->postJson('/api/v2/items/'.$other->id.'/valuation', ['revalidate_date' => '2026-11-01'])->assertStatus(409);
+    $this->postJson($route)->assertStatus(422);
+    $this->postJson($route)->assertStatus(422);
+    $this->postJson($route, ['revalidate_date' => '2026-11-01'])->assertStatus(422);
+    $this->postJson('/api/v2/items/'.$other->id.'/valuation', ['revalidate_date' => '2026-11-01'])->assertStatus(422);
     $this->travelTo(CarbonImmutable::parse('2026-11-02 00:00:01', 'UTC'));
-    $this->postJson($route, ['revalidate_date' => '2026-11-01'])->assertStatus(409);
-    $this->postJson($route, ['revalidate_date' => '2026-11-02'])->assertStatus(409);
-    expect($wallet->balance($user))->toBe(0);
-    $this->assertDatabaseCount('credit_consumptions', 2);
-    expect(CreditLedgerEntry::query()->where('entry_type', 'spend')->count())->toBe(2);
+    $this->postJson($route, ['revalidate_date' => '2026-11-01'])->assertStatus(422);
+    $this->postJson($route, ['revalidate_date' => '2026-11-02'])->assertStatus(422);
+    expect($wallet->balance($user))->toBe(2);
+    $this->assertDatabaseCount('credit_consumptions', 0);
+    expect(CreditLedgerEntry::query()->where('entry_type', 'spend')->count())->toBe(0);
 });

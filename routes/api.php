@@ -14,6 +14,7 @@ use App\Http\Controllers\API\MarketChartController;
 use App\Http\Controllers\API\MarketNotificationController;
 use App\Http\Controllers\API\MetalsController;
 use App\Http\Controllers\API\NotificationController;
+use App\Http\Controllers\API\PaidSearchController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\PublicItemImageController;
 use App\Http\Controllers\API\SavedItemController;
@@ -32,14 +33,19 @@ Route::prefix('v1')->group(function (): void {
         Route::post('subscriptions/purchases/{provider}', [StorePurchaseController::class, 'purchase'])->whereIn('provider', ['apple', 'google'])->middleware('throttle:subscription-purchases');
         Route::post('subscriptions/restore', [StorePurchaseController::class, 'restore'])->middleware('throttle:subscription-purchases');
         Route::post('subscriptions/resync', [StorePurchaseController::class, 'resync'])->middleware('throttle:subscription-purchases');
-        Route::post('items/{item}/valuation', ItemValuationController::class)->middleware('throttle:subscription-reveals');
+    // Legacy POST clients must supply a paid search receipt; opening a product
+    // by itself never charges another credit.
+    Route::post('items/{item}/valuation', [PaidSearchController::class, 'valuation'])->middleware('throttle:subscription-reveals');
     });
 });
 
 Route::prefix('v2')->middleware('auth:sanctum')->group(function (): void {
     Route::get('wallet', [CreditWalletController::class, 'show']);
     Route::get('wallet/transactions', [CreditWalletController::class, 'transactions']);
-    Route::post('items/{item}/valuation', CreditValuationController::class)->middleware('throttle:subscription-reveals');
+    Route::post('items/search', [PaidSearchController::class, 'start'])->middleware('throttle:subscription-reveals');
+    Route::get('items/search/{searchId}', [PaidSearchController::class, 'page']);
+    Route::get('items/{item}/valuation', [PaidSearchController::class, 'valuation']);
+    Route::post('items/{item}/valuation', [PaidSearchController::class, 'valuation'])->middleware('throttle:subscription-reveals');
 });
 
 Route::prefix('auth')->group(function () {
