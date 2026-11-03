@@ -68,28 +68,43 @@ class StripeBillingGateway
         if ($oneTime && ($title === '' || mb_strlen($title) > 255)) {
             throw new RuntimeException('Checkout offer must have a valid database title.');
         }
+        $credits = (int) ($order->offer_snapshot['credits'] ?? 0);
+        $months = (int) ($order->offer_snapshot['durationMonths'] ?? 0);
+        $description = $order->kind === 'topup'
+            ? $credits.' extra Maik Cat credits. One-time purchase, no subscription.'
+            : $credits.' Maik Cat credits for '.$months.' months. One-time prepaid access, no automatic renewal.';
         $params = [
             'customer' => $customer,
             'client_reference_id' => $order->getKey(),
             'mode' => $oneTime ? 'payment' : 'subscription',
+            'submit_type' => $oneTime ? 'pay' : 'subscribe',
             'line_items' => [$oneTime
                 ? ['price_data' => [
                     'currency' => strtolower((string) $order->offer_snapshot['currency']),
                     'unit_amount' => (int) $order->offer_snapshot['amountMinor'],
                     'product_data' => [
                         'name' => $title,
+                        'description' => $description,
                         'metadata' => [
                             'maik_offer_key' => (string) $offer->offer_key,
                             'maik_offer_revision' => (string) $offer->revision,
+                            'maik_purchase_kind' => $order->kind,
                         ],
                     ],
                 ], 'quantity' => 1]
                 : ['price' => $offer->stripe_price_id, 'quantity' => 1]],
             'success_url' => $base.'?orderId='.$order->getKey().'&result=success',
             'cancel_url' => $base.'?orderId='.$order->getKey().'&result=cancel',
-            'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => $order->environment],
+            'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => $order->environment, 'purchase_kind' => $order->kind],
             'expires_at' => now()->addMinutes(30)->timestamp,
         ];
+        // Link's hosted express-payment surface has a fixed green treatment
+        // and can visually replace the merchant-branded Checkout in our QA
+        // WebView. Use the standard Stripe Checkout card form for the isolated
+        // sandbox visual review; do not change live payment-method behavior.
+        if ($order->environment === 'sandbox') {
+            $params['wallet_options'] = ['link' => ['display' => 'never']];
+        }
         if ($order->kind === 'subscription' && ! $prepaid) {
             $params['subscription_data'] = [
                 'metadata' => ['order_id' => $order->getKey(), 'billing_environment' => $order->environment],

@@ -32,6 +32,16 @@ use Spatie\Permission\Models\Role;
  */
 class MaikCatQaBillingSeeder extends Seeder
 {
+    /** Human-facing names for QA offers. Their identifiers stay internal. */
+    public const OFFER_NAMES = [
+        'qa-wallet-1m' => 'Monthly Plan',
+        'qa-wallet-3m' => 'Quarterly Plan',
+        'qa-wallet-6m' => 'Semiannual Plan',
+        'qa-wallet-12m' => 'Annual Plan',
+        'qa-topup-10' => '10 Extra Credits',
+        'qa-topup-30' => '30 Extra Credits',
+        'qa-topup-100' => '100 Extra Credits',
+    ];
     public const ACCOUNTS = [
         'empty' => 'qa-maik-empty@example.test',
         'free' => 'qa-maik-free@example.test',
@@ -364,56 +374,12 @@ class MaikCatQaBillingSeeder extends Seeder
 
         $this->publishStripeTestOffers($users['admin'], $offerKeys);
 
-        $scenariosFile = storage_path('app/private/maik-qa-scenarios.json');
-        $report = [
-            'period' => $monthKey,
-            'billingEnvironment' => 'sandbox',
-            'checkoutNote' => 'Stripe test Products/Prices are automatically created and published when sk_test_ is configured. Native Checkout remains disabled by API policy.',
-            'valuationItemSamples' => $items->map(fn (Item $item) => [
-                'id' => $item->getKey(), 'serialCode' => $item->serial_code,
-            ])->all(),
-            'scenarioNotes' => [
-                'empty' => 'No subscription and no wallet credits (paywall)',
-                'free' => 'Manual free credits',
-                'paid' => 'Simulated paid-cycle wallet grant, not a real Stripe subscription',
-                'topup' => 'Top-up credits with no expiry',
-                'mixed' => 'Paid, free and top-up buckets in one wallet',
-                'complimentary' => 'Recurring complimentary plan allocation',
-                'once' => 'One-time complimentary allocation',
-                'expired' => 'Expired grant and explicitly revoked top-up',
-                'held' => 'Held paid credits, remaining available free credits',
-                'bulk' => 'Completed admin-grant batch; cancelled preview also exists',
-                'admin' => 'QA-only admin actor; temporary seeding permissions revoked',
-                'renewed' => 'Previous expired cycle plus current-cycle wallet credits',
-                'renewal_due' => 'Wallet credits expiring near first seeding time',
-                'expired_only' => 'Only expired paid-cycle credits',
-                'topup_only' => 'Only nonexpiring top-up credits',
-                'low_balance' => 'Exactly one available credit',
-                'partially_used' => 'Five paid credits; two distinct serial-family receipts',
-                'exhausted' => 'Two paid credits fully consumed; zero remaining',
-                'repeat_reveal' => 'Previously revealed serial family; a new valuation charges another credit',
-                'paid_priority' => 'Paid credit spent first; free and top-up still available',
-                'held_only' => 'All available grants on hold; paywall',
-                'revoked_only' => 'All available grants revoked; paywall',
-                'scheduled_free' => 'Complimentary allocation with future start; currently zero',
-                'revoked_free' => 'Complimentary allocation revoked before issuance',
-                'expired_free' => 'Complimentary allocation expired before issuance',
-            ],
-            'accounts' => collect($users)->map(fn (User $user, string $scenario) => [
-                'email' => $user->email, 'userId' => $user->id,
-                'walletBalance' => $wallet->balance($user, 'sandbox'),
-                'usageReceipts' => CreditConsumption::query()->where('user_id', $user->id)->where('environment', 'sandbox')->count(),
-            ])->all(),
-        ];
-        file_put_contents($scenariosFile, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), LOCK_EX);
-        @chmod($scenariosFile, 0600);
-
         $this->command?->info('Maik Cat QA data inserted/verified in the configured database. No Stripe charges.');
         foreach ($users as $scenario => $user) {
             $this->command?->line(sprintf('%-16s user_id=%d wallet=%d', $scenario, $user->id, $wallet->balance($user, 'sandbox')));
         }
         $this->command?->line('Private QA credentials: '.$file);
-        $this->command?->line('QA scenario report: '.$scenariosFile);
+        $this->command?->line('QA balances are available directly from the database via maik:qa-billing-report.');
     }
 
     private function publishStripeTestOffers(User $admin, array $offerKeys): void

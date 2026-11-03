@@ -7,9 +7,11 @@ $root = Split-Path -Parent $PSScriptRoot
 $secretFile = Join-Path $root 'storage/app/private/maik-qa-credentials.json'
 if (!(Test-Path $secretFile)) { throw 'QA credential file is absent; run MaikCatQaBillingSeeder first.' }
 $manifest = Get-Content $secretFile -Raw | ConvertFrom-Json
-$scenarioFile = Join-Path $root 'storage/app/private/maik-qa-scenarios.json'
-if (!(Test-Path $scenarioFile)) { throw 'QA scenario report is absent; run MaikCatQaBillingSeeder first.' }
-$scenarioReport = Get-Content $scenarioFile -Raw | ConvertFrom-Json
+# QA balances must come from the current database, not an old JSON snapshot.
+Push-Location $root
+try { $reportLines = & php artisan maik:qa-billing-report; if ($LASTEXITCODE -ne 0) { throw 'Could not read QA balances from Laravel.' } }
+finally { Pop-Location }
+$scenarioReport = ($reportLines -join "`n") | ConvertFrom-Json
 $results = New-Object System.Collections.Generic.List[object]
 
 function Invoke-QaApi {

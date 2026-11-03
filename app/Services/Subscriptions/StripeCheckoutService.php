@@ -42,14 +42,16 @@ class StripeCheckoutService
         $offers = BillingPlanPrice::query()->where('environment', $this->environment())
             ->whereNull('retired_at')
             ->whereNotNull('published_at')
-            ->orderBy('kind')->orderBy('amount_minor')->get();
+            ->orderByDesc('revision')->orderByDesc('id')->get()
+            // Old revisions remain stored for previous orders, but only the
+            // latest published version per offer key can be sold or displayed.
+            ->unique('offer_key')->sortBy(fn (BillingPlanPrice $price) =>
+                $price->kind.'-'.str_pad((string) $price->amount_minor, 12, '0', STR_PAD_LEFT))->values();
         // Once commercial offers are published, QA fixtures must not appear
         // in the customer-facing catalog. Preserve the existing catalog until
         // at least one commercial offer is published, avoiding an empty store.
         $commercial = $offers->reject(static fn (BillingPlanPrice $offer) => str_starts_with($offer->offer_key, 'qa-'));
-        if ($commercial->isNotEmpty()) {
-            $offers = $commercial->unique('offer_key');
-        }
+        if ($commercial->isNotEmpty()) $offers = $commercial;
         $map = static fn (BillingPlanPrice $price): array => [
             'priceVersionId' => $price->getKey(),
             'planId' => $price->subscription_plan_id,
@@ -131,6 +133,11 @@ class StripeCheckoutService
             }
             $offer = BillingPlanPrice::query()->whereKey($priceId)->where('environment', $environment)->first();
             if (! $offer || $offer->kind !== $kind || ! $offer->checkoutEligible()) {
+                throw new HttpException(409, 'OFFER_CHANGED');
+            }
+            if (BillingPlanPrice::query()->where('environment', $environment)
+                ->where('offer_key', $offer->offer_key)->whereNull('retired_at')
+                ->whereNotNull('published_at')->where('revision', '>', $offer->revision)->exists()) {
                 throw new HttpException(409, 'OFFER_CHANGED');
             }
             if (str_starts_with($offer->offer_key, 'qa-')
@@ -330,6 +337,22 @@ class StripeCheckoutService
             'orderId' => $order->getKey(), 'kind' => $order->kind, 'status' => $order->status,
             'paymentStatus' => $order->payment_status, 'fulfillmentStatus' => $order->fulfillment_status,
         ];
+        // Purchase details come from the immutable DB order snapshot, never
+        // from a JSON fixture, a Stripe Product name, or client-supplied text.
+        $snapshot = $order->offer_snapshot ?? [];
+        if (is_string($snapshot['name'] ?? null) && trim($snapshot['name']) !== ''
+            && is_numeric($snapshot['amountMinor'] ?? null)
+            && is_string($snapshot['currency'] ?? null)
+            && is_numeric($snapshot['credits'] ?? null)) {
+            $data['offer'] = [
+                'priceVersionId' => $order->billing_plan_price_id,
+                'name' => $snapshot['name'],
+                'credits' => (int) $snapshot['credits'],
+                'amountMinor' => (int) $snapshot['amountMinor'],
+                'currency' => $snapshot['currency'],
+                'durationMonths' => $snapshot['durationMonths'] ?? null,
+            ];
+        }
         if ($includeCheckoutUrl && $order->status === 'checkout_created') {
             $data['checkoutUrl'] = $order->checkout_url;
         }
@@ -338,5 +361,36 @@ class StripeCheckoutService
         }
 
         return $data;
+    }
+
+    /**
+     * A display-only rename may follow an old prepaid purchase when the new
+     * published revision has exactly the same credits, price and duration.
+     * The immutable order/receipt name is never rewritten.
+     */
+    public function currentDisplayNameFor(BillingOrder $order): ?string
+    {
+        $original = BillingPlanPrice::query()->whereKey($order->billing_plan_price_id)
+            ->where('environment', $order->environment)->first();
+        $purchasedName = $order->offer_snapshot['name'] ?? $original?->name;
+        if (! $original) {
+            return is_string($purchasedName) ? $purchasedName : null;
+        }
+        return $this->currentDisplayNameForPrice($original, $purchasedName);
+    }
+
+    /** Resolve only a safe rename; never overwrite historical purchase details. */
+    public function currentDisplayNameForPrice(BillingPlanPrice $original, ?string $historicalName = null): string
+    {
+        $latest = BillingPlanPrice::query()->where('environment', $original->environment)
+            ->where('offer_key', $original->offer_key)->whereNotNull('published_at')
+            ->whereNull('retired_at')->orderByDesc('revision')->first();
+
+        return $latest && $latest->kind === $original->kind
+            && $latest->credits === $original->credits
+            && $latest->amount_minor === $original->amount_minor
+            && $latest->currency === $original->currency
+            && $latest->duration_months === $original->duration_months
+                ? $latest->name : ($historicalName ?: $original->name);
     }
 }

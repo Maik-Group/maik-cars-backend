@@ -69,7 +69,11 @@ it('renders one-time Stripe Checkout titles from immutable Laravel offer data, n
         ]);
         $params = app(StripeBillingGateway::class)->checkoutSessionParameters($order, $offer, 'cus_test_1');
         expect($params['mode'])->toBe('payment')
+            ->and($params['submit_type'])->toBe('pay')
+            ->and($params['wallet_options']['link']['display'])->toBe('never')
             ->and($params['line_items'][0]['price_data']['product_data']['name'])->toBe($name)
+            ->and($params['line_items'][0]['price_data']['product_data']['description'])->toContain($kind === 'topup' ? 'One-time purchase, no subscription' : 'no automatic renewal')
+            ->and($params['metadata']['purchase_kind'])->toBe($kind)
             ->and($params['line_items'][0]['price_data']['unit_amount'])->toBe(2499)
             ->and($params['line_items'][0]['price_data']['currency'])->toBe('usd')
             ->and($params['line_items'][0]['price_data']['product_data']['metadata']['maik_offer_key'])->toBe($offer->offer_key)
@@ -92,6 +96,38 @@ it('keeps a purchased offer title frozen in its checkout snapshot', function ():
     $params = app(StripeBillingGateway::class)->checkoutSessionParameters($order, $offer, 'cus_test_2');
     expect($params['line_items'][0]['price_data']['product_data']['name'])->toBe('10 Extra Credits')
         ->and($params['line_items'][0]['price_data']['unit_amount'])->toBe(399);
+});
+
+it('keeps live checkout wallet configuration unchanged while the sandbox uses the brand-first card form', function (): void {
+    config()->set('stripe_billing.return_url', 'https://maik.example.test/billing/return');
+    $order = new BillingOrder;
+    $order->forceFill([
+        'id' => (string) Str::uuid(), 'environment' => 'production', 'kind' => 'topup',
+        'offer_snapshot' => ['name' => '10 Extra Credits', 'credits' => 10,
+            'amountMinor' => 399, 'currency' => 'USD'],
+    ]);
+    $params = app(StripeBillingGateway::class)->checkoutSessionParameters($order, stripeOffer()->replicate(), 'cus_qa');
+    expect($params)->not->toHaveKey('wallet_options');
+});
+
+it('provides the exact saved database order name and price to the in-app checkout, never a Stripe catalog title', function (): void {
+    $order = new BillingOrder;
+    $order->forceFill([
+        'id' => (string) Str::uuid(), 'kind' => 'topup',
+        'billing_plan_price_id' => 14, 'status' => 'checkout_created',
+        'checkout_url' => 'https://checkout.stripe.com/c/pay/test',
+        'offer_snapshot' => [
+            'name' => '10 Extra Credits', 'credits' => 10, 'amountMinor' => 399,
+            'currency' => 'USD', 'durationMonths' => null,
+        ],
+    ]);
+    $data = app(StripeCheckoutService::class)->orderResponse($order, true);
+    expect($data['offer'])->toBe([
+        'priceVersionId' => 14, 'name' => '10 Extra Credits',
+        'credits' => 10, 'amountMinor' => 399, 'currency' => 'USD',
+        'durationMonths' => null,
+    ])->and($data['kind'])->toBe('topup')
+        ->and($data['checkoutUrl'])->toContain('checkout.stripe.com');
 });
 
 it('keeps Stripe checkout closed by default and makes catalog reading side-effect free', function (): void {

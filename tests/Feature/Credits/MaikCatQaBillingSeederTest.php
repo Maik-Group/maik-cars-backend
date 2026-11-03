@@ -53,7 +53,7 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
             ->and(CreditGrant::query()->where('environment', 'production')->count())->toBe(0)
             ->and(CreditGrant::query()->where('environment', 'sandbox')->where('user_id', $bulk->id)->sum('credits'))->toBe(3)
             ->and(is_file($storage.'/app/private/maik-qa-credentials.json'))->toBeTrue()
-            ->and(is_file($storage.'/app/private/maik-qa-scenarios.json'))->toBeTrue()
+            ->and(is_file($storage.'/app/private/maik-qa-scenarios.json'))->toBeFalse()
             ->and(count(MaikCatQaBillingSeeder::ACCOUNTS))->toBe(25)
             ->and($wallet->balance($scenarioUser('empty'), 'sandbox'))->toBe(0)
             ->and($wallet->balance($scenarioUser('low_balance'), 'sandbox'))->toBe(1)
@@ -80,11 +80,12 @@ it('seeds sandbox-only QA fixtures even when the server admin role lacks bulk gr
         $receipt = CreditConsumption::query()->where('user_id', $scenarioUser('repeat_reveal')->id)->firstOrFail();
         expect($wallet->spend($scenarioUser('repeat_reveal'), Item::findOrFail($receipt->item_id), 'sandbox')['counted'])->toBeTrue();
 
-        $report = json_decode((string) file_get_contents($storage.'/app/private/maik-qa-scenarios.json'), true, flags: JSON_THROW_ON_ERROR);
-        expect($report['accounts']['exhausted']['walletBalance'])->toBe(0)
-            ->and($report['accounts']['partially_used']['walletBalance'])->toBe(3)
-            ->and($report['accounts']['repeat_reveal']['usageReceipts'])->toBe(1)
-            ->and(count($report['valuationItemSamples']))->toBe(2);
+        $this->artisan('maik:qa-billing-report')
+            ->expectsOutputToContain('"billingEnvironment":"sandbox"')
+            ->assertSuccessful();
+        // The explicit repeat above creates a second receipt; read the live
+        // ledger rather than a stale pre-repeat JSON report.
+        expect(CreditConsumption::query()->where('user_id', $scenarioUser('repeat_reveal')->id)->count())->toBe(2);
 
         // Confirm generated credentials actually work with the mobile login
         // endpoint, and that the API exposes the sandbox wallet only when the

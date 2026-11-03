@@ -136,7 +136,10 @@ class StripeBillingController extends Controller
             'paidSubscription' => $usePrepaid ? [
                 'status' => 'active',
                 'priceVersionId' => $prepaid->billing_plan_price_id,
-                'planName' => BillingPlanPrice::query()->find($prepaid->billing_plan_price_id)?->name,
+                // Preserve the purchased name, not a later catalog revision.
+                'planName' => $prepaid->offer_snapshot['name']
+                    ?? BillingPlanPrice::query()->find($prepaid->billing_plan_price_id)?->name,
+                'displayName' => $billing->currentDisplayNameFor($prepaid),
                 'durationMonths' => (int) $prepaid->offer_snapshot['durationMonths'],
                 'periodStart' => $prepaid->period_start?->toIso8601String(),
                 'periodEnd' => $prepaid->period_end?->toIso8601String(),
@@ -145,6 +148,7 @@ class StripeBillingController extends Controller
                 'status' => $subscription->status,
                 'priceVersionId' => $subscription->billing_plan_price_id,
                 'planName' => $planName?->name,
+                'displayName' => $planName ? $billing->currentDisplayNameForPrice($planName) : null,
                 'durationMonths' => $planName?->duration_months,
                 'periodStart' => $subscription->period_start?->toIso8601String(),
                 'periodEnd' => $subscription->period_end?->toIso8601String(),
