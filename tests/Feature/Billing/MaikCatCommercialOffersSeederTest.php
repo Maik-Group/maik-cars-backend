@@ -81,3 +81,30 @@ it('shows commercial published offers instead of QA fixtures when publication be
     $catalog = app(\App\Services\Subscriptions\StripeCheckoutService::class)->catalog();
     expect(collect($catalog['subscriptions'])->pluck('priceVersionId')->all())->toBe([$commercial->id]);
 });
+
+it('serves only the seven canonical commercial offers with real credits and no QA names', function (): void {
+    config()->set('stripe_billing.secret_key', 'sk_test_example');
+    config()->set('stripe_billing.return_url', 'https://example.test/return');
+    config()->set('stripe_billing.webhook_secret', 'whsec_test_fake');
+    $this->seed(MaikCatCommercialOffersSeeder::class);
+
+    foreach (MaikCatCommercialOffersSeeder::OFFERS as $definition) {
+        $offer = BillingPlanPrice::query()->where('offer_key', $definition['key'])->sole();
+        $offer->forceFill([
+            'verified_at' => now(), 'published_at' => now(),
+            'stripe_product_id' => 'prod_canonical_'.$offer->getKey(),
+            'stripe_price_id' => 'price_canonical_'.$offer->getKey(),
+        ])->save();
+    }
+
+    $catalog = app(\App\Services\Subscriptions\StripeCheckoutService::class)->catalog();
+    $offers = collect($catalog['subscriptions'])->merge($catalog['topUps']);
+    expect($offers)->toHaveCount(7)
+        ->and($offers->every(fn (array $offer) => $offer['checkoutEligible']))->toBeTrue()
+        ->and($offers->pluck('name')->sort()->values()->all())->toBe(
+            collect(MaikCatCommercialOffersSeeder::OFFERS)->pluck('name')->sort()->values()->all()
+        )
+        ->and(collect($catalog['subscriptions'])->pluck('credits')->all())->toBe([30, 105, 240, 540])
+        ->and(collect($catalog['topUps'])->pluck('credits')->all())->toBe([10, 30, 100])
+        ->and($offers->contains(fn (array $offer) => str_contains($offer['name'], 'QA')))->toBeFalse();
+});
