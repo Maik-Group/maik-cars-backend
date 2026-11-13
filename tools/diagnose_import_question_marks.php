@@ -1,4 +1,5 @@
 <?php
+
 require __DIR__.'/../vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -19,7 +20,7 @@ $pdo = new PDO(
 
 echo "DATABASE\n";
 foreach ([
-    'total_items' => "SELECT COUNT(*) FROM items",
+    'total_items' => 'SELECT COUNT(*) FROM items',
     'excel_items' => "SELECT COUNT(*) FROM items WHERE source='excel_import'",
     'bad_serial_any' => "SELECT COUNT(*) FROM items WHERE serial_code LIKE '%?%'",
     'bad_model_any' => "SELECT COUNT(*) FROM items WHERE model LIKE '%?%'",
@@ -49,25 +50,27 @@ $sql = "SELECT i.id, c.name AS car_group, i.serial_code, i.model, i.weight_kg, i
         ORDER BY i.created_at DESC
         LIMIT 30";
 foreach ($pdo->query($sql) as $row) {
-    echo json_encode($row, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+    echo json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL;
 }
 
 $path = __DIR__.'/../storage/app/imports/maik_2_101857.xlsx';
-echo "EXCEL_FILE=".(is_file($path) ? 'yes' : 'no').PHP_EOL;
+echo 'EXCEL_FILE='.(is_file($path) ? 'yes' : 'no').PHP_EOL;
 if (is_file($path)) {
     $reader = IOFactory::createReaderForFile($path);
     $reader->setReadDataOnly(false);
     $spreadsheet = $reader->load($path);
     $questionCells = 0;
     foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
-        if (strtolower(trim($sheet->getTitle())) === 'kitko') continue;
-        for ($r=4; $r <= $sheet->getHighestDataRow(); $r++) {
-            $model = (string) $sheet->getCellByColumnAndRow(1,$r)->getValue();
-            $serial = (string) $sheet->getCellByColumnAndRow(2,$r)->getValue();
-            if (str_contains($model,'?') || str_contains($serial,'?')) {
+        if (strtolower(trim($sheet->getTitle())) === 'kitko') {
+            continue;
+        }
+        for ($r = 4; $r <= $sheet->getHighestDataRow(); $r++) {
+            $model = (string) $sheet->getCellByColumnAndRow(1, $r)->getValue();
+            $serial = (string) $sheet->getCellByColumnAndRow(2, $r)->getValue();
+            if (str_contains($model, '?') || str_contains($serial, '?')) {
                 $questionCells++;
                 if ($questionCells <= 30) {
-                    echo 'EXCEL_BAD|'.$sheet->getTitle().'|'.$r.'|'.json_encode([$model,$serial], JSON_UNESCAPED_UNICODE).PHP_EOL;
+                    echo 'EXCEL_BAD|'.$sheet->getTitle().'|'.$r.'|'.json_encode([$model, $serial], JSON_UNESCAPED_UNICODE).PHP_EOL;
                 }
             }
         }

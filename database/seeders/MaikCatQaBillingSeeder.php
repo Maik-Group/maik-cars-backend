@@ -42,6 +42,7 @@ class MaikCatQaBillingSeeder extends Seeder
         'qa-topup-30' => '30 Extra Credits',
         'qa-topup-100' => '100 Extra Credits',
     ];
+
     public const ACCOUNTS = [
         'empty' => 'qa-maik-empty@example.test',
         'free' => 'qa-maik-free@example.test',

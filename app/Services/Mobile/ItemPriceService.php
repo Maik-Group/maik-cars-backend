@@ -10,7 +10,9 @@ use Throwable;
 class ItemPriceService
 {
     private const string DEFAULT_CURRENCY = 'USD';
+
     private const float EXCEL_TROY_OUNCE_GRAMS = 31.1043;
+
     private const float GRAMS_PER_KILOGRAM = 1000.0;
 
     /** @var array<string, array{platinum: float, palladium: float, rhodium: float}> */

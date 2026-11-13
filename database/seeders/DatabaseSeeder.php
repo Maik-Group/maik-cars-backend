@@ -26,8 +26,10 @@ class DatabaseSeeder extends Seeder
             // Seed only the real Maik Cat offer catalog by default. The QA
             // wallet/account fixture seeder is an explicit opt-in for tests;
             // it must not populate storefront offers during ordinary seeding.
-            // Stripe publication remains an explicit, guarded operator step.
+            // Sandbox Stripe publication follows automatically after the
+            // canonical offer drafts and authorized admin have been seeded.
             MaikCatCommercialOffersSeeder::class,
+            PublishMaikCatCommercialOffersSeeder::class,
         ]);
     }
 }

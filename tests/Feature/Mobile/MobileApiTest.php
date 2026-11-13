@@ -5,9 +5,12 @@ use App\Models\CarGroup;
 use App\Models\ExtraCode;
 use App\Models\Item;
 use App\Models\MetalPrice;
+use App\Models\User;
+use App\Services\Credits\CreditWalletService;
 use App\Services\Mobile\MetalsSpotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
@@ -290,7 +293,7 @@ test('item search endpoint accepts text and carGroup', function () {
     }
 });
 
-test('item collections return only calculable items with at least one image', function () {
+test('item collections return calculable items with or without images and conceal prices', function () {
     mockItemMetalsSpotServiceAscii();
 
     $group = CarGroup::factory()->create();
@@ -324,22 +327,23 @@ test('item collections return only calculable items with at least one image', fu
         $response = getJson('/api/items');
 
         $response->assertOk();
-        $response->assertJsonCount(1, 'data');
-        $response->assertJsonPath('data.0.id', $calculable->id);
-        $response->assertJsonPath('data.0.price', 28.44);
-        expect($response->json('data.0.imageUrl'))->toBeString()->not->toBe('');
-        expect($response->json('data.0.imageThumbUrl'))->toBeString()->not->toBe('');
-        expect($response->json('data.0.imageDetailUrl'))->toBeString()->not->toBe('');
-        $response->assertJsonMissing(['id' => $hiddenCalculable->id]);
+        $response->assertJsonCount(2, 'data');
+        $rows = collect($response->json('data'))->keyBy('id');
+        expect($rows[$calculable->id]['price'])->toBeNull()
+            ->and($rows[$calculable->id]['imageUrl'])->toBeString()->not->toBe('')
+            ->and($rows[$calculable->id]['imageThumbUrl'])->toBeString()->not->toBe('')
+            ->and($rows[$calculable->id]['imageDetailUrl'])->toBeString()->not->toBe('')
+            ->and($rows[$hiddenCalculable->id]['imageUrl'])->toBeNull();
         $response->assertJsonMissing(['id' => $missingPriceData->id]);
 
         $homeResponse = getJson('/api/home/top_items');
 
         $homeResponse->assertOk();
-        $homeResponse->assertJsonCount(1, 'topItems');
-        $homeResponse->assertJsonPath('topItems.0.id', $calculable->id);
-        $homeResponse->assertJsonPath('topItems.0.price', 28.44);
-        expect($homeResponse->json('topItems.0.imageUrl'))->toBeString()->not->toBe('');
+        $homeResponse->assertJsonCount(2, 'topItems');
+        $homeRows = collect($homeResponse->json('topItems'))->keyBy('id');
+        expect($homeRows[$calculable->id]['price'])->toBeNull()
+            ->and($homeRows[$calculable->id]['imageUrl'])->toBeString()->not->toBe('')
+            ->and($homeRows[$hiddenCalculable->id]['imageUrl'])->toBeNull();
     } finally {
         @unlink($imagePath);
     }
@@ -368,8 +372,15 @@ test('item details price applies the Excel formula for normalized kilogram weigh
 
         $response->assertOk();
         $response->assertJsonPath('data.id', $item->id);
-        $response->assertJsonPath('data.price', 673.75);
-        $response->assertJsonPath('data.weightKg', 6.649);
+        $response->assertJsonPath('data.price', null);
+        $response->assertJsonPath('data.weightKg', null);
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        giveActiveBillingPlan($user);
+        app(CreditWalletService::class)->grant($user, 'paid_cycle', 1, 'excel-qa', now('UTC')->toImmutable()->addWeek());
+        $search = $this->postJson('/api/v2/items/search', ['text' => '8670409'], ['Idempotency-Key' => 'excel-formula-qa-1234'])->assertOk();
+        $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$search->json('searchId').'&currency=EUR')
+            ->assertOk()->assertJsonPath('data.price', 673.75)->assertJsonPath('data.weightKg', 6.649);
     } finally {
         @unlink($imagePath);
     }

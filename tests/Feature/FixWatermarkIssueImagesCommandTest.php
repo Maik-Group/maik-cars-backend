@@ -176,7 +176,7 @@ test('paid run retries prompt until Gemini verifies watermark is gone and replac
     Http::fake(function (Request $request) use ($firstEditedBytes, $cleanEditedBytes, &$editPrompts) {
         $modalities = $request->data()['generationConfig']['responseModalities'] ?? [];
 
-        if ($modalities === ['TEXT', 'IMAGE']) {
+        if ($modalities === ['IMAGE']) {
             $editPrompts[] = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
             $bytes = count($editPrompts) === 1 ? $firstEditedBytes : $cleanEditedBytes;
 

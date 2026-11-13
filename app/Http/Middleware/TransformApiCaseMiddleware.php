@@ -21,17 +21,17 @@ class TransformApiCaseMiddleware
 
     private function transformRequestKeysToSnakeCase(Request $request): void
     {
-        $request->query->replace($this->transformKeys($request->query->all(), static fn(string $key): string => Str::snake($key)));
+        $request->query->replace($this->transformKeys($request->query->all(), static fn (string $key): string => Str::snake($key)));
 
         if ($request->request->count() > 0) {
-            $request->request->replace($this->transformKeys($request->request->all(), static fn(string $key): string => Str::snake($key)));
+            $request->request->replace($this->transformKeys($request->request->all(), static fn (string $key): string => Str::snake($key)));
         }
 
         if ($request->isJson()) {
             $json = $request->json()->all();
 
             if (is_array($json)) {
-                $snakeCaseJson = $this->transformKeys($json, static fn(string $key): string => Str::snake($key));
+                $snakeCaseJson = $this->transformKeys($json, static fn (string $key): string => Str::snake($key));
                 $request->json()->replace($snakeCaseJson);
                 $request->replace($snakeCaseJson);
             }
@@ -50,7 +50,7 @@ class TransformApiCaseMiddleware
             return $response;
         }
 
-        $response->setData($this->transformKeys($data, static fn(string $key): string => Str::camel($key)));
+        $response->setData($this->transformKeys($data, static fn (string $key): string => Str::camel($key)));
 
         return $response;
     }

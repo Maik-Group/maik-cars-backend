@@ -25,6 +25,7 @@ class MaikCatQaOfferNameRevisionSeeder extends Seeder
                     $latest->forceFill(['name' => $name,
                         'offer_snapshot' => [...($latest->offer_snapshot ?? []), 'name' => $name]])->save();
                 }
+
                 continue;
             }
 

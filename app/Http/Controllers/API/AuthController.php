@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\API\Auth\ForgotPasswordRequest;
 use App\Http\Requests\API\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -18,7 +15,7 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::query()->where('email', $validated['email'])->first();
+        $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
@@ -29,6 +26,13 @@ class AuthController extends Controller
         if (! $user->is_active) {
             return response()->json([
                 'message' => 'Your account is currently inactive. Please contact support.',
+            ], 403);
+        }
+
+        if ($user->requiresMobileEmailVerification()) {
+            return response()->json([
+                'code' => 'EMAIL_VERIFICATION_REQUIRED',
+                'message' => 'Verify your email using Forgot password to continue.',
             ], 403);
         }
 
@@ -128,21 +132,6 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Logged out successfully.',
-        ]);
-    }
-
-    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
-    {
-        Password::sendResetLink($request->only('email'));
-
-        $exists = User::query()->where('email', $request->input('email'))->exists();
-
-        if (! $exists) {
-            return response()->json(['message' => 'email not found.', Response::HTTP_BAD_REQUEST]);
-        }
-
-        return response()->json([
-            'message' => 'password reset link was sent.',
         ]);
     }
 }

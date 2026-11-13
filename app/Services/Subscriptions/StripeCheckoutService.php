@@ -45,13 +45,14 @@ class StripeCheckoutService
             ->orderByDesc('revision')->orderByDesc('id')->get()
             // Old revisions remain stored for previous orders, but only the
             // latest published version per offer key can be sold or displayed.
-            ->unique('offer_key')->sortBy(fn (BillingPlanPrice $price) =>
-                $price->kind.'-'.str_pad((string) $price->amount_minor, 12, '0', STR_PAD_LEFT))->values();
+            ->unique('offer_key')->sortBy(fn (BillingPlanPrice $price) => $price->kind.'-'.str_pad((string) $price->amount_minor, 12, '0', STR_PAD_LEFT))->values();
         // Once commercial offers are published, QA fixtures must not appear
         // in the customer-facing catalog. Preserve the existing catalog until
         // at least one commercial offer is published, avoiding an empty store.
         $commercial = $offers->reject(static fn (BillingPlanPrice $offer) => str_starts_with($offer->offer_key, 'qa-'));
-        if ($commercial->isNotEmpty()) $offers = $commercial;
+        if ($commercial->isNotEmpty()) {
+            $offers = $commercial;
+        }
         $map = static fn (BillingPlanPrice $price): array => [
             'priceVersionId' => $price->getKey(),
             'planId' => $price->subscription_plan_id,
@@ -76,6 +77,16 @@ class StripeCheckoutService
             'externalCheckoutAllowed' => false,
             'checkoutUnavailableReason' => $configurationReason,
         ];
+    }
+
+    public function catalogFor(?User $user): array
+    {
+        $catalog = $this->catalog();
+        if (! $user || ! ActiveBillingPlan::endsAt($user, $catalog['environment'])) {
+            $catalog['topUps'] = [];
+        }
+
+        return $catalog;
     }
 
     public function isCheckoutConfigured(): bool
@@ -117,6 +128,9 @@ class StripeCheckoutService
             throw new HttpException(422, 'IDEMPOTENCY_KEY_REQUIRED');
         }
         $environment = $this->environment();
+        if ($kind === 'topup') {
+            abort_unless(ActiveBillingPlan::endsAt($user, $environment), 403, 'SUBSCRIPTION_REQUIRED');
+        }
         $requestHash = hash('sha256', json_encode([$kind, $priceId, $context], JSON_THROW_ON_ERROR));
         $keyHash = hash('sha256', $idempotency);
 
@@ -376,6 +390,7 @@ class StripeCheckoutService
         if (! $original) {
             return is_string($purchasedName) ? $purchasedName : null;
         }
+
         return $this->currentDisplayNameForPrice($original, $purchasedName);
     }
 

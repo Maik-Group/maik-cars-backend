@@ -79,6 +79,7 @@ class EcotradeJsonReader
 
                     if ($char === '[') {
                         $arrayStarted = true;
+
                         continue;
                     }
 
@@ -106,11 +107,13 @@ class EcotradeJsonReader
                 if ($inString) {
                     if ($escape) {
                         $escape = false;
+
                         continue;
                     }
 
                     if ($char === '\\') {
                         $escape = true;
+
                         continue;
                     }
 
@@ -123,11 +126,13 @@ class EcotradeJsonReader
 
                 if ($char === '"') {
                     $inString = true;
+
                     continue;
                 }
 
                 if ($char === '{' || $char === '[') {
                     $depth++;
+
                     continue;
                 }
 

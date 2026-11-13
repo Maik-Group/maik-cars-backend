@@ -18,9 +18,12 @@ screenshots and public chats**:
 - `storage/app/private/maik-qa-credentials.json` — generated passwords and
   scenario emails. Never regenerated for existing QA users; new scenario
   credentials are appended on a later run.
-- `storage/app/private/maik-qa-scenarios.json` — report with each user ID,
-  balance, receipt count, explanatory notes, and two item IDs/serials for
-  testing valuation. No passwords in this report.
+
+QA balances are now read from MySQL when needed via `php artisan maik:qa-billing-report`.
+The old `maik-qa-scenarios.json` report is no longer created or used: it could
+become stale and was a duplicate of database records. The private credential
+manifest above is *not* an offer catalog; it is retained solely so QA users can
+log in without changing their existing password hashes.
 
 ## Accounts and expected wallet behavior
 

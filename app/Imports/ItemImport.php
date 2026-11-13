@@ -23,7 +23,7 @@ class ItemImport implements WithMultipleSheets
                     $group->excel_sheet_name => $import,
                 ];
             })
-            ->reject(fn($_, string $sheet) => in_array(strtolower($sheet), $skip, true))
+            ->reject(fn ($_, string $sheet) => in_array(strtolower($sheet), $skip, true))
             ->toArray();
 
         return $this->sheetImports;
@@ -32,9 +32,9 @@ class ItemImport implements WithMultipleSheets
     public function report(): array
     {
         return [
-            'rows_inserted' => collect($this->sheetImports)->sum(fn(ItemSheetImport $sheet) => $sheet->insertedCount()),
-            'rows_skipped' => collect($this->sheetImports)->sum(fn(ItemSheetImport $sheet) => $sheet->skippedCount()),
-            'rows_invalid' => collect($this->sheetImports)->sum(fn(ItemSheetImport $sheet) => $sheet->invalidCount()),
+            'rows_inserted' => collect($this->sheetImports)->sum(fn (ItemSheetImport $sheet) => $sheet->insertedCount()),
+            'rows_skipped' => collect($this->sheetImports)->sum(fn (ItemSheetImport $sheet) => $sheet->skippedCount()),
+            'rows_invalid' => collect($this->sheetImports)->sum(fn (ItemSheetImport $sheet) => $sheet->invalidCount()),
         ];
     }
 }

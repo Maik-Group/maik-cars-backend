@@ -50,6 +50,7 @@ class PublishCommercialTestOffers extends Command
         foreach ($offers as $offer) {
             if ($offer->published_at) {
                 $this->line('Already published: '.$offer->offer_key.' r'.$offer->revision);
+
                 continue;
             }
             if (! $offer->stripe_price_id) {

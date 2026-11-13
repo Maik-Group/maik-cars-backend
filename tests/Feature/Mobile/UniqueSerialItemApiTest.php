@@ -2,10 +2,13 @@
 
 use App\Models\Item;
 use App\Models\ItemFilterMapping;
+use App\Models\User;
+use App\Services\Credits\CreditWalletService;
 use App\Services\Mobile\ItemApiSettingsService;
 use App\Services\Mobile\MetalsSpotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\getJson;
 
@@ -148,10 +151,8 @@ test('unique serial mode averages only API-visible siblings without averaging as
         $pageOne->assertJsonPath('meta.total', 2);
         $pageOne->assertJsonPath('meta.lastPage', 2);
         $pageOne->assertJsonPath('data.0.serialCode', 'GM10');
-        $pageOne->assertJsonPath('data.0.price', 2.46);
-
-        expect((float) $pageOne->json('data.0.weightKg'))->toBeIn([1.0, 2.0])
-            ->and((float) $pageOne->json('data.0.weightKg'))->not->toBe(4.0);
+        $pageOne->assertJsonPath('data.0.price', null);
+        $pageOne->assertJsonPath('data.0.weightKg', null);
 
         $pageTwo = getJson('/api/items?sort=serial_code&per_page=1&page=2');
 
@@ -163,8 +164,15 @@ test('unique serial mode averages only API-visible siblings without averaging as
 
         $detail->assertOk();
         $detail->assertJsonPath('data.serialCode', 'GM10');
-        $detail->assertJsonPath('data.price', 2.46);
-        $detail->assertJsonPath('data.weightKg', 1);
+        $detail->assertJsonPath('data.price', null);
+        $detail->assertJsonPath('data.weightKg', null);
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        giveActiveBillingPlan($user);
+        app(CreditWalletService::class)->grant($user, 'paid_cycle', 1, 'unique-qa', now('UTC')->toImmutable()->addWeek());
+        $search = $this->postJson('/api/v2/items/search', ['text' => 'GM10'], ['Idempotency-Key' => 'unique-serial-qa-1234'])->assertOk();
+        $this->getJson('/api/v2/items/'.$first->id.'/valuation?searchId='.$search->json('searchId'))
+            ->assertOk()->assertJsonPath('data.price', 2.46)->assertJsonPath('data.weightKg', 1);
 
         expect((float) $first->fresh()->weight_kg)->toBe(1.0)
             ->and((float) $first->fresh()->pt_ppm)->toBe(100.0)

@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\BillingPlanPrice;
+use App\Models\BillingSubscription;
+use App\Models\User;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -46,4 +50,23 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function giveActiveBillingPlan(User $user, ?string $environment = null): BillingSubscription
+{
+    $environment ??= config('stripe_billing.environment') ?: 'sandbox';
+    config(['stripe_billing.environment' => $environment]);
+    $offer = BillingPlanPrice::query()->create([
+        'offer_key' => (string) Str::uuid(), 'revision' => 1,
+        'environment' => $environment, 'kind' => 'subscription', 'name' => 'Test subscription',
+        'duration_months' => 1, 'credits' => 10, 'currency' => 'USD',
+        'amount_minor' => 100, 'terms_version' => 'test', 'offer_snapshot' => [],
+    ]);
+
+    return BillingSubscription::query()->create([
+        'user_id' => $user->id, 'billing_plan_price_id' => $offer->id,
+        'environment' => $environment, 'stripe_subscription_id' => 'sub_'.Str::uuid(),
+        'stripe_customer_id' => 'cus_test', 'status' => 'active',
+        'period_start' => now('UTC')->subDay(), 'period_end' => now('UTC')->addWeek(),
+    ]);
 }

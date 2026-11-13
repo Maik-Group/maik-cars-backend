@@ -77,6 +77,7 @@ class PetraSheetImport implements OnEachRow, WithChunkReading, WithStartRow
 
         if (! $this->isValidRow($data)) {
             $this->invalid++;
+
             return;
         }
 
@@ -86,6 +87,7 @@ class PetraSheetImport implements OnEachRow, WithChunkReading, WithStartRow
 
         if (isset($this->seenSignatures[$signature])) {
             $this->skipped++;
+
             return;
         }
 
@@ -102,6 +104,7 @@ class PetraSheetImport implements OnEachRow, WithChunkReading, WithStartRow
 
         if ($this->hasExactAssay($sameSerial, $data)) {
             $this->skipped++;
+
             return;
         }
 

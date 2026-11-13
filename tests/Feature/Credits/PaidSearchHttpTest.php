@@ -31,8 +31,53 @@ function makePaidSearchItem(string $serial): Item
     ]);
 }
 
+it('uses only free credits without a subscription and honors the last free search receipt', function (): void {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+    $item = makePaidSearchItem('FREE-CREDIT-TEST');
+    $wallet = app(CreditWalletService::class);
+    $paid = $wallet->grant($user, 'paid_cycle', 2, 'paid:free-credit-test', null);
+    $topup = $wallet->grant($user, 'purchased_topup', 3, 'topup:free-credit-test', null);
+    $free = $wallet->grant($user, 'free_grant', 1, 'free:free-credit-test', null);
+    $path = '/api/v2/items/search';
+    $payload = ['text' => 'FREE-CREDIT-TEST'];
+    $headers = ['Idempotency-Key' => 'free-credit-search-test'];
+    $id = $this->postJson($path, $payload, $headers)->assertOk()->json('searchId');
+    $this->postJson($path, $payload, $headers)->assertOk()->assertJsonPath('searchId', $id);
+    $this->getJson($path.'/'.$id)->assertOk();
+    $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$id)->assertOk();
+    $this->postJson($path, $payload, ['Idempotency-Key' => 'free-credit-exhausted-test'])->assertForbidden();
+    expect($free->fresh()->remaining)->toBe(0)
+        ->and($paid->fresh()->remaining)->toBe(2)
+        ->and($topup->fresh()->remaining)->toBe(3);
+    $this->assertDatabaseCount('credit_consumptions', 1);
+});
+
+it('freezes credits and denies existing receipts when the plan ends while keeping details browsable', function (): void {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+    $item = makePaidSearchItem('PLAN-REQUIRED');
+    $wallet = app(CreditWalletService::class);
+    $wallet->grant($user, 'purchased_topup', 2, 'topup:plan-required', null);
+    $headers = ['Idempotency-Key' => 'active-plan-required-test'];
+    $path = '/api/v2/items/search';
+    $payload = ['text' => 'PLAN-REQUIRED'];
+    $this->postJson($path, $payload, $headers)->assertForbidden();
+    expect($wallet->balance($user))->toBe(2);
+
+    $plan = giveActiveBillingPlan($user);
+    $searchId = $this->postJson($path, $payload, $headers)->assertOk()->json('searchId');
+    $plan->update(['period_end' => now('UTC')]);
+    $this->postJson($path, $payload, $headers)->assertForbidden();
+    $this->getJson($path.'/'.$searchId)->assertForbidden();
+    $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$searchId)->assertForbidden();
+    $this->getJson('/api/items/'.$item->id)->assertOk()->assertJsonPath('data.price', null);
+    expect($wallet->balance($user))->toBe(1);
+});
+
 it('charges exactly one credit for a nonempty explicit search, not its pages or item details', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $item = makePaidSearchItem('SEARCH-ONE');
     $wallet = app(CreditWalletService::class);
@@ -52,6 +97,7 @@ it('charges exactly one credit for a nonempty explicit search, not its pages or 
 
 it('does not charge an empty search and requires available credit only when results exist', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     makePaidSearchItem('SEARCH-HIT');
     $this->postJson('/api/v2/items/search', ['text' => 'no-results-999999'],
@@ -75,6 +121,7 @@ it('does not let SQL wildcards unlock the complete catalog as a single search', 
 
 it('does not duplicate a search charge on retry and rejects an idempotency key reused for another term', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     makePaidSearchItem('RETRY-CAT');
     app(CreditWalletService::class)->grant($user, 'paid_cycle', 2, 'paid-search:retry', now('UTC')->toImmutable()->addWeek());
@@ -88,6 +135,7 @@ it('does not duplicate a search charge on retry and rejects an idempotency key r
 
 it('scopes free detail reads to the paid search result and search owner', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $matched = makePaidSearchItem('MATCH-ALPHA');
     $notMatched = makePaidSearchItem('BETA-OTHER');
@@ -96,12 +144,15 @@ it('scopes free detail reads to the paid search result and search owner', functi
         ['Idempotency-Key' => 'search-access-check-12345'])->assertOk()->json('searchId');
     $this->getJson('/api/v2/items/'.$notMatched->id.'/valuation?searchId='.$searchId)->assertStatus(403);
     $this->getJson('/api/v2/items/'.$matched->id.'/valuation')->assertStatus(422);
-    Sanctum::actingAs(User::factory()->create());
+    $otherUser = User::factory()->create();
+    giveActiveBillingPlan($otherUser);
+    Sanctum::actingAs($otherUser);
     $this->getJson('/api/v2/items/'.$matched->id.'/valuation?searchId='.$searchId)->assertNotFound();
 });
 
 it('keeps old valuation POST endpoints from charging when a paid search session is missing', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $item = makePaidSearchItem('OLD-ROUTE');
     app(CreditWalletService::class)->grant($user, 'paid_cycle', 2, 'paid-search:legacy', now('UTC')->toImmutable()->addWeek());
@@ -113,6 +164,7 @@ it('keeps old valuation POST endpoints from charging when a paid search session 
 
 it('keeps the last paid search accessible after the last credit is consumed and expires access after its lease', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $item = makePaidSearchItem('LAST-CREDIT');
     app(CreditWalletService::class)->grant($user, 'paid_cycle', 1, 'last-credit-search', now('UTC')->toImmutable()->addWeek());
@@ -131,6 +183,7 @@ it('keeps the last paid search accessible after the last credit is consumed and 
 
 it('immediately revokes search price access when its funding credit is revoked', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $item = makePaidSearchItem('REVOKED-SEARCH');
     $wallet = app(CreditWalletService::class);

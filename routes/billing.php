@@ -4,6 +4,7 @@ use App\Http\Controllers\API\BillingWebhookController;
 use App\Http\Controllers\API\StripeBillingController;
 use App\Http\Controllers\API\StripeWebhookController;
 use App\Http\Controllers\BillingWebController;
+use App\Http\Middleware\EnsureMobileEmailVerified;
 use App\Http\Middleware\LimitBillingPayload;
 use Illuminate\Support\Facades\Route;
 
@@ -20,7 +21,7 @@ Route::post('api/v1/billing/stripe/webhook', StripeWebhookController::class)
 Route::get('api/v1/billing/plans', [StripeBillingController::class, 'plans'])
     ->middleware('throttle:60,1');
 
-Route::middleware(['auth:sanctum', 'throttle:subscription-purchases'])
+Route::middleware(['auth:sanctum', EnsureMobileEmailVerified::class, 'throttle:subscription-purchases'])
     ->prefix('api/v1/billing')->group(function (): void {
         Route::post('web-handoff', [BillingWebController::class, 'issue']);
         Route::post('checkouts', [StripeBillingController::class, 'checkout']);

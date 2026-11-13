@@ -72,6 +72,6 @@ class MaikCatCommercialOffersSeeder extends Seeder
             }
         }
 
-        $this->command?->info('Seven Maik Cat commercial sandbox offers prepared. Publish with the guarded Stripe test command.');
+        $this->command?->info('Seven Maik Cat commercial sandbox offers prepared. Default database seeding automatically publishes them when Stripe test credentials are configured.');
     }
 }

@@ -23,8 +23,7 @@ class CalculatorService
         float $rhRate = 0.0,
         float $humidityRate = 0.0,
         string $currency = 'USD'
-    ): array
-    {
+    ): array {
         $currency = strtoupper(trim($currency)) === 'EUR' ? 'EUR' : 'USD';
         $fxRate = $this->currencyConversionService->rateOrOne('USD', 'EUR');
 

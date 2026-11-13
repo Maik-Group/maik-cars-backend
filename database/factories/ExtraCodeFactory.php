@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Item;
 use App\Models\ExtraCode;
+use App\Models\Item;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,4 +22,3 @@ class ExtraCodeFactory extends Factory
         ];
     }
 }
-

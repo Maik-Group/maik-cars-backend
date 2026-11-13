@@ -23,7 +23,7 @@ class StripeBillingController extends Controller
 {
     public function plans(StripeCheckoutService $billing): JsonResponse
     {
-        return response()->json(['data' => $billing->catalog()])->header('Cache-Control', 'private, no-store');
+        return response()->json(['data' => $billing->catalogFor(auth('sanctum')->user())])->header('Cache-Control', 'private, no-store');
     }
 
     public function checkout(Request $request, StripeCheckoutService $billing): JsonResponse
@@ -106,18 +106,20 @@ class StripeBillingController extends Controller
             }
         }
         $subscription = BillingSubscription::query()->where('user_id', $user->getKey())
-            ->where('environment', $environment)->latest('id')->first();
+            ->where('environment', $environment)
+            ->orderByRaw("CASE WHEN status IN ('active', 'trialing') AND period_start <= ? AND period_end > ? THEN 0 ELSE 1 END", [now('UTC'), now('UTC')])
+            ->latest('id')->first();
         $prepaid = BillingOrder::query()->where('user_id', $user->getKey())
             ->where('environment', $environment)->where('kind', 'subscription')
-            ->where('status', 'fulfilled')->where('period_end', '>', now('UTC'))
-            ->latest('fulfilled_at')->limit(5)->get()->first(function (BillingOrder $order) use ($environment): bool {
+            ->where('status', 'fulfilled')->where('period_start', '<=', now('UTC'))->where('period_end', '>', now('UTC'))
+            ->orderByDesc('period_end')->cursor()->first(function (BillingOrder $order) use ($environment, $user): bool {
                 return ($order->offer_snapshot['billingMode'] ?? null) === 'prepaid_term'
-                    && CreditGrant::query()->where('environment', $environment)
+                    && CreditGrant::query()->where('environment', $environment)->where('user_id', $user->getKey())
                         ->where('source_type', 'paid_cycle')
                         ->where('source_key', 'stripe-term:'.$environment.':'.$order->getKey())
                         ->whereNull('revoked_at')->whereNull('held_at')->exists();
             });
-        $usePrepaid = $prepaid && (! $subscription || ! $subscription->period_end
+        $usePrepaid = $prepaid && (! $subscription || ! in_array($subscription->status, ['active', 'trialing'], true) || ! $subscription->period_start || $subscription->period_start->isFuture() || ! $subscription->period_end
             || $subscription->period_end->lessThan($prepaid->period_end));
         $planName = $subscription ? BillingPlanPrice::query()->whereKey($subscription->billing_plan_price_id)
             ->where('environment', $environment)->first() : null;

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\BillingPlanPrice;
 use App\Models\BillingOrder;
+use App\Models\BillingPlanPrice;
 use App\Models\User;
 use App\Services\Subscriptions\StripeBillingGateway;
 use App\Services\Subscriptions\StripeCheckoutService;

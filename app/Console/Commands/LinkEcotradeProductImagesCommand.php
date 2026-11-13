@@ -197,7 +197,7 @@ class LinkEcotradeProductImagesCommand extends Command
         }
 
         try {
-            $headers = fgetcsv($handle);
+            $headers = fgetcsv($handle, escape: '');
             $itemIdIndex = is_array($headers) ? array_search('item_id', $headers, true) : false;
             $statusIndex = is_array($headers) ? array_search('status', $headers, true) : false;
 
@@ -207,7 +207,7 @@ class LinkEcotradeProductImagesCommand extends Command
 
             $itemIds = [];
 
-            while (($row = fgetcsv($handle)) !== false) {
+            while (($row = fgetcsv($handle, escape: '')) !== false) {
                 $itemId = trim((string) ($row[$itemIdIndex] ?? ''));
                 $status = trim((string) ($row[$statusIndex] ?? ''));
 

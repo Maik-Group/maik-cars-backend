@@ -7,6 +7,7 @@ use App\Models\CreditGrant;
 use App\Models\CreditLedgerEntry;
 use App\Models\PaidSearchSession;
 use App\Services\Credits\CreditWalletService;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,8 @@ class CreditWalletController extends Controller
                 ->where('paid_search_sessions.charged', true)
                 ->where('paid_search_sessions.expires_at', '>', now('UTC'))
                 ->whereNull('search_grant.revoked_at')->whereNull('search_grant.held_at')
+                ->when(! ActiveBillingPlan::endsAt($request->user(), (string) $environment),
+                    fn ($query) => $query->whereIn('search_grant.source_type', CreditGrant::FREE_SOURCES))
                 ->max('paid_search_sessions.expires_at')
             : null;
 

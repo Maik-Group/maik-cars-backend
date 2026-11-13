@@ -3,6 +3,7 @@
 use App\Models\BillingPlanPrice;
 use App\Models\User;
 use App\Services\Subscriptions\StripeBillingGateway;
+use App\Services\Subscriptions\StripeCheckoutService;
 use Database\Seeders\MaikCatCommercialOffersSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -73,12 +74,12 @@ it('shows commercial published offers instead of QA fixtures when publication be
         'terms_version' => 'qa-local-1', 'published_at' => now(), 'verified_at' => now(),
         'stripe_price_id' => 'price_qa', 'offer_snapshot' => ['credits' => 15],
     ]);
-    expect(collect(app(\App\Services\Subscriptions\StripeCheckoutService::class)->catalog()['subscriptions'])->pluck('priceVersionId')->all())->toBe([$qa->id]);
+    expect(collect(app(StripeCheckoutService::class)->catalog()['subscriptions'])->pluck('priceVersionId')->all())->toBe([$qa->id]);
     $this->seed(MaikCatCommercialOffersSeeder::class);
     $commercial = BillingPlanPrice::query()->where('offer_key', 'maik-starter-monthly')->firstOrFail();
     $commercial->forceFill(['published_at' => now(), 'verified_at' => now(), 'stripe_price_id' => 'price_commercial'])->save();
 
-    $catalog = app(\App\Services\Subscriptions\StripeCheckoutService::class)->catalog();
+    $catalog = app(StripeCheckoutService::class)->catalog();
     expect(collect($catalog['subscriptions'])->pluck('priceVersionId')->all())->toBe([$commercial->id]);
 });
 
@@ -97,7 +98,7 @@ it('serves only the seven canonical commercial offers with real credits and no Q
         ])->save();
     }
 
-    $catalog = app(\App\Services\Subscriptions\StripeCheckoutService::class)->catalog();
+    $catalog = app(StripeCheckoutService::class)->catalog();
     $offers = collect($catalog['subscriptions'])->merge($catalog['topUps']);
     expect($offers)->toHaveCount(7)
         ->and($offers->every(fn (array $offer) => $offer['checkoutEligible']))->toBeTrue()

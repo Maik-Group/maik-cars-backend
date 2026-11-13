@@ -73,6 +73,12 @@ class User extends Authenticatable implements FilamentUser
             );
     }
 
+    public function requiresMobileEmailVerification(): bool
+    {
+        return $this->email_verified_at === null
+            && ! $this->hasAnyRole(['super_admin', 'admin', 'content_manager']);
+    }
+
     public function savedItems(): BelongsToMany
     {
         return $this->belongsToMany(Item::class, 'saved_items', 'user_id', 'item_id')->withTimestamps();

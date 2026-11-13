@@ -20,15 +20,15 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if ($this->has('fcm_token')) {
+        if (is_string($this->input('fcm_token'))) {
             $this->merge([
-                'fcm_token' => trim((string) $this->input('fcm_token')),
+                'fcm_token' => trim($this->input('fcm_token')),
             ]);
         }
 
-        if ($this->has('device_id')) {
+        if (is_string($this->input('device_id'))) {
             $this->merge([
-                'device_id' => trim((string) $this->input('device_id')),
+                'device_id' => trim($this->input('device_id')),
             ]);
         }
     }

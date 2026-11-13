@@ -146,7 +146,6 @@ test('keeping current pricing resolves every linked review item with an audit no
         ->and($secondMapping->fresh()->notes)->toBe('OEM and assay manually verified.');
 });
 
-
 test('review issue explains the reason in user-friendly language', function (): void {
     $group = CarGroup::factory()->create(['name' => 'BMW']);
 

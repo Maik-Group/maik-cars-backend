@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BillingPlanPrice;
 use App\Models\User;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use App\Services\Subscriptions\StripeCheckoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -11,7 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class BillingWebController extends Controller
 {
@@ -24,6 +24,9 @@ class BillingWebController extends Controller
             'kind' => ['required', Rule::in(['subscription', 'topup'])],
             'priceVersionId' => ['required', 'integer', 'min:1'],
         ]);
+        if ($data['kind'] === 'topup') {
+            abort_unless(ActiveBillingPlan::endsAt($request->user(), $environment), 403, 'SUBSCRIPTION_REQUIRED');
+        }
         $offer = BillingPlanPrice::query()->whereKey($data['priceVersionId'])
             ->where('environment', $environment)->where('kind', $data['kind'])->first();
         abort_unless($offer?->checkoutEligible(), 409, 'OFFER_CHANGED');
@@ -82,10 +85,11 @@ class BillingWebController extends Controller
     {
         abort_unless($request->user()?->is_active, 403);
         abort_unless($billing->environment() === 'sandbox', 403, 'WEB_CHECKOUT_NOT_APPROVED');
-        $catalog = $billing->catalog();
+        $catalog = $billing->catalogFor($request->user());
 
         $selectedKind = (string) $request->query('kind', '');
         $selectedPrice = (int) $request->query('priceVersionId', 0);
+
         return response()->view('billing.shop', compact('catalog', 'selectedKind', 'selectedPrice'))
             ->header('Cache-Control', 'private, no-store');
     }

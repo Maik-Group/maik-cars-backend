@@ -133,9 +133,7 @@ it('provides the exact saved database order name and price to the in-app checkou
 it('keeps Stripe checkout closed by default and makes catalog reading side-effect free', function (): void {
     stripeOffer();
     $response = $this->getJson('/api/v1/billing/plans')->assertOk();
-    $response->assertJsonPath('data.topUps.0.credits', 15)
-        ->assertJsonPath('data.topUps.0.checkoutEligible', false)
-        ->assertJsonPath('data.topUps.0.checkoutUnavailableReason', 'CHECKOUT_NOT_CONFIGURED')
+    $response->assertJsonPath('data.topUps', [])
         ->assertJsonPath('data.checkoutUnavailableReason', 'CHECKOUT_NOT_CONFIGURED')
         ->assertJsonPath('data.externalCheckoutAllowed', false);
     expect(BillingOrder::query()->count())->toBe(0)
@@ -147,7 +145,7 @@ it('disables checkout when a signed webhook secret is missing', function (): voi
     config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
     config()->set('stripe_billing.webhook_secret', null);
     $this->getJson('/api/v1/billing/plans')->assertOk()
-        ->assertJsonPath('data.topUps.0.checkoutEligible', false)
+        ->assertJsonPath('data.topUps', [])
         ->assertJsonPath('data.checkoutUnavailableReason', 'STRIPE_WEBHOOK_NOT_CONFIGURED');
     Sanctum::actingAs(User::factory()->create(['is_active' => true]));
     $this->postJson('/api/v1/billing/checkouts', [
@@ -160,6 +158,7 @@ it('disables checkout when a signed webhook secret is missing', function (): voi
 it('creates idempotent hosted topup checkout for the owner with immutable server prices', function (): void {
     $offer = stripeOffer();
     $user = User::factory()->create(['is_active' => true]);
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     config()->set('stripe_billing.secret_key', 'sk_test_fake');
     config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
@@ -182,9 +181,25 @@ it('creates idempotent hosted topup checkout for the owner with immutable server
         ->assertOk()->assertJsonPath('data.paymentStatus', 'unpaid');
 });
 
+it('hides top-ups and denies direct checkout until a billing plan is active', function (): void {
+    $offer = stripeOffer();
+    $user = User::factory()->create(['is_active' => true]);
+    Sanctum::actingAs($user);
+    config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
+    $this->mock(StripeBillingGateway::class)->shouldNotReceive('checkout');
+    $this->getJson('/api/v1/billing/plans')->assertOk()->assertJsonPath('data.topUps', []);
+    $this->postJson('/api/v1/billing/checkouts', [
+        'kind' => 'topup', 'priceVersionId' => $offer->id, 'purchaseContextId' => 'web',
+    ], ['Idempotency-Key' => 'topup-plan-required-test'])->assertForbidden();
+    giveActiveBillingPlan($user);
+    $this->getJson('/api/v1/billing/plans')->assertOk()->assertJsonPath('data.topUps.0.priceVersionId', $offer->id);
+});
+
 it('rejects native app checkout contexts without making Stripe requests', function (): void {
     $offer = stripeOffer();
-    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    $user = User::factory()->create(['is_active' => true]);
+    giveActiveBillingPlan($user);
+    Sanctum::actingAs($user);
     config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
     $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
         $mock->shouldNotReceive('customer');
@@ -201,7 +216,9 @@ it('rejects native app checkout contexts without making Stripe requests', functi
 
 it('opens Stripe directly only for the explicit sandbox QA mobile context', function (): void {
     $offer = stripeOffer();
-    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    $user = User::factory()->create(['is_active' => true]);
+    giveActiveBillingPlan($user);
+    Sanctum::actingAs($user);
     config()->set('stripe_billing.return_url', 'https://example.test/billing/return');
     $this->mock(StripeBillingGateway::class, function (MockInterface $mock): void {
         $mock->shouldReceive('customer')->once()->andReturn(['id' => 'cus_qa_direct']);

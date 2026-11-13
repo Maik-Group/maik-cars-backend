@@ -31,6 +31,7 @@ function billingWebTestOffer(bool $published = true, string $key = 'web-test'): 
 it('issues a one-use hashed handoff for a Sanctum account and denies replay', function (): void {
     $user = User::factory()->create(['is_active' => true]);
     $offer = billingWebTestOffer();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $url = $this->postJson('/api/v1/billing/web-handoff', [
         'kind' => 'topup', 'priceVersionId' => $offer->id,
@@ -50,6 +51,7 @@ it('issues a one-use hashed handoff for a Sanctum account and denies replay', fu
 it('rejects expired handoffs and inactive accounts', function (): void {
     $user = User::factory()->create(['is_active' => true]);
     $offer = billingWebTestOffer();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $url = $this->postJson('/api/v1/billing/web-handoff', [
         'kind' => 'topup', 'priceVersionId' => $offer->id,
@@ -65,6 +67,7 @@ it('checks actual published offers and creates checkout only via the web session
     $user = User::factory()->create(['is_active' => true]);
     $offer = billingWebTestOffer();
     $this->get('/billing/shop')->assertForbidden();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $url = $this->postJson('/api/v1/billing/web-handoff', [
         'kind' => 'topup', 'priceVersionId' => $offer->id,
@@ -90,7 +93,9 @@ it('rejects unsigned, unpublished, mismatched and production handoffs before iss
     $request = ['kind' => 'topup', 'priceVersionId' => $offer->id];
     $this->postJson('/api/v1/billing/web-handoff', $request)->assertUnauthorized();
 
-    Sanctum::actingAs(User::factory()->create(['is_active' => true]));
+    $user = User::factory()->create(['is_active' => true]);
+    giveActiveBillingPlan($user);
+    Sanctum::actingAs($user);
     $this->postJson('/api/v1/billing/web-handoff', ['kind' => 'subscription', 'priceVersionId' => $offer->id])->assertStatus(409);
     $draft = billingWebTestOffer(false, 'web-draft-test');
     $this->postJson('/api/v1/billing/web-handoff', [

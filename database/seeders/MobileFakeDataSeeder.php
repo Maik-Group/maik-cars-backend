@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\CarGroup;
-use App\Models\Item;
 use App\Models\ExtraCode;
 use App\Models\ImportBatch;
+use App\Models\Item;
 use App\Models\MetalPrice;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -31,11 +31,11 @@ class MobileFakeDataSeeder extends Seeder
         }
 
         $converters = collect(range(1, 80))
-            ->map(function (int $index) use ($batch, $groups): Item {
+            ->map(function (int $index) use ($groups): Item {
                 $converter = Item::factory()->make();
                 $converter->car_group_id = $groups->random()->id;
-                $converter->serial_code = 'FX-' . now()->format('ymd') . '-' . str_pad((string) $index, 4, '0', STR_PAD_LEFT);
-                $converter->model = strtoupper('MODEL-' . Str::random(5));
+                $converter->serial_code = 'FX-'.now()->format('ymd').'-'.str_pad((string) $index, 4, '0', STR_PAD_LEFT);
+                $converter->model = strtoupper('MODEL-'.Str::random(5));
                 $converter->normalized_serial = Item::normalizeSerialValue($converter->serial_code);
                 $converter->save();
 
@@ -73,7 +73,7 @@ class MobileFakeDataSeeder extends Seeder
 
         $converter
             ->addMediaFromString($svg)
-            ->usingFileName(strtolower(preg_replace('/[^A-Za-z0-9_-]+/', '-', $serial)) . '-fake.svg')
+            ->usingFileName(strtolower(preg_replace('/[^A-Za-z0-9_-]+/', '-', $serial)).'-fake.svg')
             ->toMediaCollection('images');
     }
 }

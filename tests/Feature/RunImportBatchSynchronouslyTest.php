@@ -17,7 +17,7 @@ function createSynchronousImportWorkbook(string $directory, string $filename = '
         throw new RuntimeException('Unable to create temporary Excel directory.');
     }
 
-    $spreadsheet = new Spreadsheet();
+    $spreadsheet = new Spreadsheet;
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('CatalogData');
     $sheet->fromArray([

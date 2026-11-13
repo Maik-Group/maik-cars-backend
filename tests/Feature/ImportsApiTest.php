@@ -16,6 +16,7 @@ use Laravel\Sanctum\Sanctum;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Spatie\Permission\Models\Permission;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\post;
@@ -50,7 +51,7 @@ function createXlsUpload(array $sheets, string $originalName = 'import.xls'): Up
 /** @param array<string,array<int,array<int,mixed>>> $sheets */
 function createWorkbookUpload(array $sheets, string $originalName, bool $xls): UploadedFile
 {
-    $spreadsheet = new Spreadsheet();
+    $spreadsheet = new Spreadsheet;
     $spreadsheet->removeSheetByIndex(0);
 
     foreach ($sheets as $sheetName => $rows) {
@@ -106,6 +107,7 @@ function queueAndRunImportJob(string $batchId): void
 function authenticateImportUser(): User
 {
     $user = User::factory()->create();
+    $user->givePermissionTo(Permission::findOrCreate('manage_items', 'web'));
     Sanctum::actingAs($user);
 
     return $user;

@@ -110,7 +110,7 @@ class FixWatermarkIssueImagesCommand extends Command
         }
 
         try {
-            $header = fgetcsv($handle);
+            $header = fgetcsv($handle, escape: '');
 
             if (! is_array($header)) {
                 throw new RuntimeException('Watermark issue CSV has no header: '.$path);
@@ -119,7 +119,7 @@ class FixWatermarkIssueImagesCommand extends Command
             $this->reportHeaders = array_map(static fn (mixed $value): string => (string) $value, $header);
             $rows = [];
 
-            while (($values = fgetcsv($handle)) !== false) {
+            while (($values = fgetcsv($handle, escape: '')) !== false) {
                 $row = [];
 
                 foreach ($this->reportHeaders as $index => $name) {
@@ -541,10 +541,10 @@ PROMPT);
         }
 
         try {
-            fputcsv($handle, $headers);
+            fputcsv($handle, $headers, escape: '');
 
             foreach ($rows as $row) {
-                fputcsv($handle, array_map(static fn (string $header): string => $row[$header] ?? '', $headers));
+                fputcsv($handle, array_map(static fn (string $header): string => $row[$header] ?? '', $headers), escape: '');
             }
         } finally {
             fclose($handle);
@@ -578,10 +578,10 @@ PROMPT);
         }
 
         try {
-            fputcsv($handle, $headers);
+            fputcsv($handle, $headers, escape: '');
 
             foreach ($rows as $row) {
-                fputcsv($handle, array_map(static fn (string $header): mixed => $row[$header] ?? '', $headers));
+                fputcsv($handle, array_map(static fn (string $header): mixed => $row[$header] ?? '', $headers), escape: '');
             }
         } finally {
             fclose($handle);

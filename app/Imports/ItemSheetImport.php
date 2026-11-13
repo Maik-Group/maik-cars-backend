@@ -3,21 +3,26 @@
 namespace App\Imports;
 
 use App\Models\CarGroup;
-use App\Models\Item;
 use App\Models\ExtraCode;
+use App\Models\Item;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 
-class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
+class ItemSheetImport implements ToCollection, WithChunkReading, WithStartRow
 {
     private int $inserted = 0;
+
     private int $skipped = 0;
+
     private int $invalid = 0;
+
     private array $importedSignatures = [];
+
     private CarGroup $carGroup;
+
     private int $chunkSize;
 
     public function __construct(CarGroup $carGroup, int $chunkSize = 200)
@@ -45,6 +50,7 @@ class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
 
             if (! $this->isValidRow($data)) {
                 $this->invalid++;
+
                 continue;
             }
 
@@ -69,6 +75,7 @@ class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
     {
         if ($this->isImportedSignature($data)) {
             $this->skipped++;
+
             return;
         }
 
@@ -76,6 +83,7 @@ class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
 
         if ($existing === null) {
             $this->insertConverter($data);
+
             return;
         }
 
@@ -87,12 +95,12 @@ class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
         return Item::query()
             ->when(
                 $data['serial_code'] !== null,
-                fn($q) => $q->where('serial_code', $data['serial_code'])
+                fn ($q) => $q->where('serial_code', $data['serial_code'])
                     ->where('weight_kg', $data['weight_kg'])
                     ->where('pt_ppm', $data['pt_ppm'])
                     ->where('pd_ppm', $data['pd_ppm'])
                     ->where('rh_ppm', $data['rh_ppm']),
-                fn($q) => $q->whereRaw('1 = 0'),
+                fn ($q) => $q->whereRaw('1 = 0'),
             )
             ->first();
     }
@@ -146,9 +154,9 @@ class ItemSheetImport implements ToCollection, WithStartRow, WithChunkReading
         }
 
         collect(explode('/', $raw))
-            ->map(fn(string $code) => trim($code))
+            ->map(fn (string $code) => trim($code))
             ->filter()
-            ->each(fn(string $code) => ExtraCode::create([
+            ->each(fn (string $code) => ExtraCode::create([
                 'id' => Str::uuid(),
                 'item_id' => $converter->id,
                 'code' => $code,

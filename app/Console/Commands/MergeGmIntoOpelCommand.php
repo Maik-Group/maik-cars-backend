@@ -180,6 +180,7 @@ class MergeGmIntoOpelCommand extends Command
 
             if (isset($existing[$fingerprint])) {
                 $collisions++;
+
                 continue;
             }
 

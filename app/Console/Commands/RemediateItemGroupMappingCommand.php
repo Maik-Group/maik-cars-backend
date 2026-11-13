@@ -89,11 +89,13 @@ final class RemediateItemGroupMappingCommand extends Command
                         resolution: 'unsolved',
                         reason: 'target_item_missing',
                     );
+
                     continue;
                 }
 
                 if ($this->isNoLongerAConflict($item, $referenceIndex)) {
                     $alreadyResolved++;
+
                     continue;
                 }
 
@@ -107,6 +109,7 @@ final class RemediateItemGroupMappingCommand extends Command
                         item: $item,
                         decision: $decision,
                     );
+
                     continue;
                 }
 

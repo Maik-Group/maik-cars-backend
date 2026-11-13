@@ -20,7 +20,7 @@ class CurrencyConversionService
             return 1.0;
         }
 
-        $cacheKey = self::CACHE_PREFIX . strtolower($from . '_' . $to);
+        $cacheKey = self::CACHE_PREFIX.strtolower($from.'_'.$to);
         $ttl = (int) config('services.currency.cache_ttl', 1800);
 
         return (float) Cache::remember($cacheKey, $ttl, function () use ($from, $to): float {

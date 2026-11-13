@@ -215,5 +215,4 @@ class AuditMissingMediaConversionsCommand extends Command
 
         return $value;
     }
-
 }

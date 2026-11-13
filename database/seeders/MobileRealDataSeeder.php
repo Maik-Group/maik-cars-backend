@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\CarGroup;
-use App\Models\Item;
 use App\Models\ExtraCode;
 use App\Models\ImportBatch;
+use App\Models\Item;
 use App\Models\MetalPrice;
 use Illuminate\Database\Seeder;
 
@@ -231,7 +231,7 @@ class MobileRealDataSeeder extends Seeder
             htmlspecialchars($region, ENT_QUOTES),
         );
 
-        $fileName = strtolower((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', $group->excel_sheet_name ?: $name)) . '-group.svg';
+        $fileName = strtolower((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', $group->excel_sheet_name ?: $name)).'-group.svg';
 
         $group
             ->addMediaFromString($svg)
@@ -265,7 +265,7 @@ class MobileRealDataSeeder extends Seeder
 
         $converter
             ->addMediaFromString($svg)
-            ->usingFileName(strtolower($serialCode) . '.svg')
+            ->usingFileName(strtolower($serialCode).'.svg')
             ->toMediaCollection('images');
     }
 

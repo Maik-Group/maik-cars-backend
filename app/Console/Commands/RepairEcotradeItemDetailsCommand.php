@@ -57,11 +57,13 @@ class RepairEcotradeItemDetailsCommand extends Command
 
                         if (! is_string($details) || trim($details) === '') {
                             $report['rows_skipped_unresolved']++;
+
                             continue;
                         }
 
                         if ($rawDetails === $details) {
                             $report['rows_skipped_noop']++;
+
                             continue;
                         }
 

@@ -69,6 +69,7 @@ test('legacy valuations require authentication and a search receipt without leak
 
 test('a search whose valuation cannot be calculated costs no credit', function (): void {
     $user = User::factory()->create();
+    giveActiveBillingPlan($user);
     Sanctum::actingAs($user);
     $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
     app(CreditWalletService::class)

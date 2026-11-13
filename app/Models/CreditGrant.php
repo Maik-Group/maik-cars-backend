@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreditGrant extends Model
 {
+    public const FREE_SOURCES = ['free', 'complimentary', 'free_grant'];
+
     protected $guarded = [];
 
     protected function casts(): array

@@ -74,7 +74,7 @@ class PaidSearchController extends Controller
         if (! is_finite($base) || $base <= 0) {
             throw new HttpException(503, 'VALUATION_UNAVAILABLE');
         }
-        $expires = now('UTC')->addSeconds(90)->min($session->expires_at);
+        $expires = now('UTC')->addSeconds(90)->min($this->searches->accessEndsAt($user, $session));
 
         return response()->json([
             'data' => [

@@ -1,15 +1,14 @@
 <?php
 
+use App\Http\Controllers\API\AccountAuthenticationController;
 use App\Http\Controllers\API\AppVersionController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CalculatorController;
 use App\Http\Controllers\API\CarGroupController;
-use App\Http\Controllers\API\CreditValuationController;
 use App\Http\Controllers\API\CreditWalletController;
 use App\Http\Controllers\API\HomeController;
 use App\Http\Controllers\API\ItemController;
 use App\Http\Controllers\API\ItemImageSubmissionController;
-use App\Http\Controllers\API\ItemValuationController;
 use App\Http\Controllers\API\MarketChartController;
 use App\Http\Controllers\API\MarketNotificationController;
 use App\Http\Controllers\API\MetalsController;
@@ -21,11 +20,12 @@ use App\Http\Controllers\API\SavedItemController;
 use App\Http\Controllers\API\StorePurchaseController;
 use App\Http\Controllers\API\SubscriptionController;
 use App\Http\Controllers\ImportController;
+use App\Http\Middleware\EnsureMobileEmailVerified;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::get('subscription-plans', [SubscriptionController::class, 'plans']);
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', EnsureMobileEmailVerified::class])->group(function (): void {
         Route::get('wallet', [CreditWalletController::class, 'show']);
         Route::get('wallet/transactions', [CreditWalletController::class, 'transactions']);
         Route::get('subscriptions/status', [SubscriptionController::class, 'status']);
@@ -33,13 +33,13 @@ Route::prefix('v1')->group(function (): void {
         Route::post('subscriptions/purchases/{provider}', [StorePurchaseController::class, 'purchase'])->whereIn('provider', ['apple', 'google'])->middleware('throttle:subscription-purchases');
         Route::post('subscriptions/restore', [StorePurchaseController::class, 'restore'])->middleware('throttle:subscription-purchases');
         Route::post('subscriptions/resync', [StorePurchaseController::class, 'resync'])->middleware('throttle:subscription-purchases');
-    // Legacy POST clients must supply a paid search receipt; opening a product
-    // by itself never charges another credit.
-    Route::post('items/{item}/valuation', [PaidSearchController::class, 'valuation'])->middleware('throttle:subscription-reveals');
+        // Legacy POST clients must supply a paid search receipt; opening a product
+        // by itself never charges another credit.
+        Route::post('items/{item}/valuation', [PaidSearchController::class, 'valuation'])->middleware('throttle:subscription-reveals');
     });
 });
 
-Route::prefix('v2')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v2')->middleware(['auth:sanctum', EnsureMobileEmailVerified::class])->group(function (): void {
     Route::get('wallet', [CreditWalletController::class, 'show']);
     Route::get('wallet/transactions', [CreditWalletController::class, 'transactions']);
     Route::post('items/search', [PaidSearchController::class, 'start'])->middleware('throttle:subscription-reveals');
@@ -49,8 +49,14 @@ Route::prefix('v2')->middleware('auth:sanctum')->group(function (): void {
 });
 
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('auth.forgot-password');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,login')->name('auth.login');
+    Route::middleware('throttle:10,1')->group(function (): void {
+        Route::post('/register', [AccountAuthenticationController::class, 'register'])->name('auth.register');
+        Route::post('/resend-verification', [AccountAuthenticationController::class, 'register'])->name('auth.resend-verification');
+        Route::post('/verify-email', [AccountAuthenticationController::class, 'verifyEmail'])->name('auth.verify-email');
+        Route::post('/forgot-password', [AccountAuthenticationController::class, 'forgotPassword'])->name('auth.forgot-password');
+        Route::post('/reset-password', [AccountAuthenticationController::class, 'resetPassword'])->name('auth.reset-password');
+    });
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
@@ -86,11 +92,11 @@ Route::prefix('v1/metals')->group(function () {
     Route::get('spot/{key}', [MetalsController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('refresh', [MetalsController::class, 'refresh']);
+        Route::post('refresh', [MetalsController::class, 'refresh'])->middleware('can:manage_items');
     });
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', EnsureMobileEmailVerified::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
@@ -101,11 +107,13 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('items.image-submissions.store');
     Route::delete('/saved-items/{item}', [SavedItemController::class, 'destroy'])->name('saved-items.destroy');
 
-    Route::post('/imports', [ImportController::class, 'store']);
-    Route::get('/imports/{batch}', [ImportController::class, 'show']);
-    Route::get('/imports/{batch}/duplicates', [ImportController::class, 'duplicates']);
-    Route::get('/imports/{batch}/issues', [ImportController::class, 'issues']);
-    Route::patch('/duplicates/{review}', [ImportController::class, 'resolveDuplicate']);
+    Route::middleware('can:manage_items')->group(function (): void {
+        Route::post('/imports', [ImportController::class, 'store']);
+        Route::get('/imports/{batch}', [ImportController::class, 'show']);
+        Route::get('/imports/{batch}/duplicates', [ImportController::class, 'duplicates']);
+        Route::get('/imports/{batch}/issues', [ImportController::class, 'issues']);
+        Route::patch('/duplicates/{review}', [ImportController::class, 'resolveDuplicate']);
+    });
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/test-fcm', [NotificationController::class, 'sendTestFcm'])->name('notifications.test-fcm');

@@ -9,21 +9,35 @@ use Illuminate\Support\Facades\Schema;
 class ItemPriceSettingsService
 {
     public const string RATE_PERCENT_KEY = 'item_price_rate_percent';
+
     public const string METAL_DEDUCTIONS_ENABLED_KEY = 'item_price_metal_deductions_enabled';
+
     public const string PLATINUM_DEDUCTION_PERCENT_KEY = 'item_price_platinum_deduction_percent';
+
     public const string PALLADIUM_DEDUCTION_PERCENT_KEY = 'item_price_palladium_deduction_percent';
+
     public const string RHODIUM_DEDUCTION_PERCENT_KEY = 'item_price_rhodium_deduction_percent';
+
     public const string FILTER_CORRECTION_MODE_KEY = 'item_price_filter_correction_mode';
+
     public const string FILTER_CANDIDATE_PRICE_THRESHOLD_KEY = 'item_price_filter_candidate_price_threshold';
+
     public const string FILTER_CANDIDATE_WEIGHT_THRESHOLD_KEY = 'item_price_filter_candidate_weight_threshold_kg';
 
     public const float DEFAULT_RATE_PERCENT = 80.0;
+
     public const bool DEFAULT_METAL_DEDUCTIONS_ENABLED = false;
+
     public const float DEFAULT_PLATINUM_DEDUCTION_PERCENT = 2.0;
+
     public const float DEFAULT_PALLADIUM_DEDUCTION_PERCENT = 2.0;
+
     public const float DEFAULT_RHODIUM_DEDUCTION_PERCENT = 10.0;
+
     public const string DEFAULT_FILTER_CORRECTION_MODE = FilterPriceCorrectionService::MODE_DISABLED;
+
     public const float DEFAULT_FILTER_CANDIDATE_PRICE_THRESHOLD = 700.0;
+
     public const float DEFAULT_FILTER_CANDIDATE_WEIGHT_THRESHOLD_KG = 1.5;
 
     /** @var array<string, mixed> */

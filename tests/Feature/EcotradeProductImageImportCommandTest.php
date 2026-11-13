@@ -84,9 +84,9 @@ function ecotradeImageImportHash(string $brandSlug, string $serialCode, string $
 function ecotradeImageImportGroup(array $overrides = []): CarGroup
 {
     return CarGroup::factory()->create(array_merge([
-        'name' => 'Acura',
-        'excel_sheet_name' => 'ACURA',
-        'slug' => 'acura',
+        'name' => 'JAPAN',
+        'excel_sheet_name' => 'JAPAN',
+        'slug' => 'japan',
         'source' => 'ecotrade',
     ], $overrides));
 }
@@ -642,6 +642,9 @@ test('direct image recovery can be restricted to rows from the visual audit repo
     $allowedRecord = ecotradeImageImportRecord([
         'serial_code' => 'GM 16',
         'product_name' => 'GM 16',
+        'brand_page_url' => 'https://www.ecotradegroup.com/en/carbrand/opel',
+        'brand_slug' => 'opel',
+        'brand' => 'Opel',
         'product_url' => 'https://www.ecotradegroup.com/en/product/opel-vauxhall/gm-16',
         'main_image_url' => 'https://images.test/source/gm-16.png',
         'image_urls' => ['https://images.test/source/gm-16.png'],
@@ -649,11 +652,14 @@ test('direct image recovery can be restricted to rows from the visual audit repo
     $excludedRecord = ecotradeImageImportRecord([
         'serial_code' => 'GM 18',
         'product_name' => 'GM 18',
+        'brand_page_url' => 'https://www.ecotradegroup.com/en/carbrand/opel',
+        'brand_slug' => 'opel',
+        'brand' => 'Opel',
         'product_url' => 'https://www.ecotradegroup.com/en/product/opel-vauxhall/gm-18',
         'main_image_url' => 'https://images.test/source/gm-18.png',
         'image_urls' => ['https://images.test/source/gm-18.png'],
     ]);
-    $group = ecotradeImageImportGroup();
+    $group = ecotradeImageImportGroup(['name' => 'OPEL', 'excel_sheet_name' => 'OPEL', 'slug' => 'opel']);
     $allowedItem = ecotradeImageImportItem($allowedRecord, group: $group);
     $excludedItem = ecotradeImageImportItem($excludedRecord, group: $group);
     $jsonPath = ecotradeImageImportTempFile(json_encode([$allowedRecord, $excludedRecord], JSON_THROW_ON_ERROR), '.json');

@@ -20,6 +20,7 @@
     <h1>Maik Cat</h1>
     <p>Choose a subscription or add credits. Your account: {{ auth()->user()->email }}.</p>
     @foreach (['subscriptions' => 'Subscriptions', 'topUps' => 'Extra credits'] as $category => $heading)
+        @continue($category === 'topUps' && empty($catalog[$category]))
         <h2>{{ $heading }}</h2>
         <div class="offers">
             @forelse ($catalog[$category] as $offer)

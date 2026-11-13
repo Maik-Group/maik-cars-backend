@@ -7,6 +7,7 @@ use App\Models\CreditGrant;
 use App\Models\CreditLedgerEntry;
 use App\Models\Item;
 use App\Models\User;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,6 +15,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CreditWalletService
 {
+    public function grantWelcomeCredits(User $user): void
+    {
+        $this->grant($user, 'free_grant', 5, 'registration:'.$user->getKey(), null);
+    }
+
     public function grant(User $user, string $sourceType, int $credits, string $sourceKey, ?CarbonImmutable $expiresAt, ?string $environment = null): CreditGrant
     {
         if ($credits < 1 || trim($sourceKey) === '') {
@@ -42,7 +48,7 @@ class CreditWalletService
         }, 3);
     }
 
-    public function spend(User $user, Item $item, ?string $environment = null, bool $validateExistingOnly = false, ?string $idempotencyKey = null): array
+    public function spend(User $user, Item $item, ?string $environment = null, bool $validateExistingOnly = false, ?string $idempotencyKey = null, bool $enforcePlan = false): array
     {
         $environment ??= config('stripe_billing.environment');
         $today = CarbonImmutable::now('UTC')->toDateString();
@@ -58,12 +64,14 @@ class CreditWalletService
             ? 'valuation-request:'.$idempotencyKey
             : 'valuation-attempt:'.Str::uuid());
 
-        return DB::transaction(function () use ($user, $item, $environment, $today, $fingerprint): array {
+        return DB::transaction(function () use ($user, $item, $environment, $today, $fingerprint, $enforcePlan): array {
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $freeOnly = $enforcePlan && ! ActiveBillingPlan::endsAt($user, $environment);
             $receipt = CreditConsumption::query()->where('user_id', $user->getKey())->where('environment', $environment)
                 ->where('usage_date', $today)->where('serial_fingerprint', $fingerprint)->first();
             if ($receipt && (string) $receipt->item_id === (string) $item->getKey()
-                && CreditGrant::query()->whereKey($receipt->credit_grant_id)->whereNull('revoked_at')->exists()) {
+                && CreditGrant::query()->whereKey($receipt->credit_grant_id)->whereNull('revoked_at')->whereNull('held_at')
+                    ->when($freeOnly, fn ($query) => $query->whereIn('source_type', CreditGrant::FREE_SOURCES))->exists()) {
                 return ['counted' => false, 'receipt_id' => $receipt->id, 'remaining' => $this->balance($user, $environment)];
             }
             if ($receipt) {
@@ -71,11 +79,12 @@ class CreditWalletService
             }
             $grant = CreditGrant::query()->where('user_id', $user->getKey())->where('environment', $environment)
                 ->whereNull('revoked_at')->whereNull('held_at')->where('remaining', '>', 0)
+                ->when($freeOnly, fn ($query) => $query->whereIn('source_type', CreditGrant::FREE_SOURCES))
                 ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', CarbonImmutable::now('UTC')))
                 ->orderByRaw("CASE WHEN source_type IN ('paid', 'paid_cycle') THEN 0 WHEN source_type IN ('free', 'complimentary', 'free_grant') THEN 1 ELSE 2 END")
                 ->orderByRaw('CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END')->orderBy('expires_at')->orderBy('id')->lockForUpdate()->first();
             if (! $grant) {
-                throw new HttpException(402, 'INSUFFICIENT_CREDITS');
+                throw $freeOnly ? new HttpException(403, 'SUBSCRIPTION_REQUIRED') : new HttpException(402, 'INSUFFICIENT_CREDITS');
             }
             $grant->decrement('remaining');
             $receipt = CreditConsumption::query()->create([
@@ -89,10 +98,11 @@ class CreditWalletService
         }, 3);
     }
 
-    public function balance(User $user, ?string $environment = null): int
+    public function balance(User $user, ?string $environment = null, bool $freeOnly = false): int
     {
         return (int) CreditGrant::query()->where('user_id', $user->getKey())
             ->where('environment', $environment ?? config('stripe_billing.environment'))
+            ->when($freeOnly, fn ($query) => $query->whereIn('source_type', CreditGrant::FREE_SOURCES))
             ->whereNull('revoked_at')->whereNull('held_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', CarbonImmutable::now('UTC')))
             ->sum('remaining');
     }

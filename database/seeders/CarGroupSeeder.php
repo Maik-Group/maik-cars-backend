@@ -68,7 +68,7 @@ class CarGroupSeeder extends Seeder
             htmlspecialchars($region, ENT_QUOTES),
         );
 
-        $fileName = strtolower((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', $group->excel_sheet_name ?: $name)) . '-group.svg';
+        $fileName = strtolower((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', $group->excel_sheet_name ?: $name)).'-group.svg';
 
         $group
             ->addMediaFromString($svg)

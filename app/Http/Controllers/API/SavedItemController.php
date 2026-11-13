@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\StoreSavedItemRequest;
 use App\Http\Resources\API\ItemResource;
 use App\Models\Item;
+use App\Models\User;
 use App\Services\Mobile\ItemApiResponseService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class SavedItemController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $items = $user->savedItems()
@@ -40,7 +41,7 @@ class SavedItemController extends Controller
 
     public function store(StoreSavedItemRequest $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
         $itemId = $request->validated('item_id');
 
@@ -53,7 +54,7 @@ class SavedItemController extends Controller
 
     public function destroy(Request $request, Item $item): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $user->savedItems()->detach($item->getKey());

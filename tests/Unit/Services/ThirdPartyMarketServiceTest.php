@@ -14,10 +14,10 @@ test('third party market service builds window from metals spot rows', function 
         ],
     ];
 
-    $metals = \Mockery::mock(MetalsSpotService::class);
+    $metals = Mockery::mock(MetalsSpotService::class);
     $metals->shouldReceive('all')->with('USD')->once()->andReturn($spotUsd);
 
-    $fx = \Mockery::mock(CurrencyConversionService::class);
+    $fx = Mockery::mock(CurrencyConversionService::class);
     $fx->shouldReceive('rateOrOne')->never();
 
     $service = new ThirdPartyMarketService($metals, $fx);
@@ -54,11 +54,11 @@ test('third party market service maps EUR rows from sentinel EUR quotes', functi
         ],
     ];
 
-    $metals = \Mockery::mock(MetalsSpotService::class);
+    $metals = Mockery::mock(MetalsSpotService::class);
     $metals->shouldReceive('all')->with('USD')->once()->andReturn($spotUsd);
     $metals->shouldReceive('all')->with('EUR')->once()->andReturn($spotEur);
 
-    $fx = \Mockery::mock(CurrencyConversionService::class);
+    $fx = Mockery::mock(CurrencyConversionService::class);
     $fx->shouldReceive('rateOrOne')->with('USD', 'EUR')->once()->andReturn(0.92);
 
     $service = new ThirdPartyMarketService($metals, $fx);

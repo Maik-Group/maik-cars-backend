@@ -3,11 +3,13 @@
 namespace App\Services\Credits;
 
 use App\Models\CreditConsumption;
+use App\Models\CreditGrant;
 use App\Models\Item;
 use App\Models\PaidSearchSession;
 use App\Models\User;
 use App\Services\Mobile\ItemApiResponseService;
 use App\Services\Mobile\ItemPriceService;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +51,7 @@ class PaidSearchService
 
             return $this->authorized($user, (string) $prior->getKey());
         }
+        abort_unless(ActiveBillingPlan::endsAt($user, $environment) || $this->wallet->balance($user, $environment, freeOnly: true) > 0, 403, 'SUBSCRIPTION_REQUIRED');
         $firstMatch = $this->query($text)->first();
         if ($firstMatch) {
             // Pricing may depend on external metals feeds; never keep a user
@@ -75,14 +78,14 @@ class PaidSearchService
                     throw new HttpException(410, 'SEARCH_EXPIRED');
                 }
 
-                return $existing;
+                return $this->authorized($lockedUser, (string) $existing->getKey());
             }
 
             // Only actual, visible catalog matches are chargeable; autocomplete,
             // empty queries, filters, and empty result sets use no credits.
             $receiptId = null;
             if ($firstMatch) {
-                $receipt = $this->wallet->spend($lockedUser, $firstMatch, $environment, false, $idempotencyKey);
+                $receipt = $this->wallet->spend($lockedUser, $firstMatch, $environment, false, $idempotencyKey, enforcePlan: true);
                 $receiptId = $receipt['receipt_id'];
             }
 
@@ -111,18 +114,34 @@ class PaidSearchService
         if ($session->expires_at->isPast()) {
             throw new HttpException(410, 'SEARCH_EXPIRED');
         }
-        if ($session->charged) {
-            $receipt = CreditConsumption::query()->whereKey($session->credit_consumption_id)->first();
-            // Receipt identity belongs to the search that was actually debited.
-            if (! $receipt || $receipt->user_id !== $user->getKey()
-                || $receipt->environment !== $session->environment
-                || ! DB::table('credit_grants')->where('id', $receipt->credit_grant_id)
-                    ->whereNull('revoked_at')->whereNull('held_at')->exists()) {
-                throw new HttpException(403, 'SEARCH_ACCESS_REVOKED');
-            }
-        }
+        $this->accessEndsAt($user, $session);
 
         return $session;
+    }
+
+    public function accessEndsAt(User $user, PaidSearchSession $session): \Carbon\CarbonInterface
+    {
+        if ($session->charged) {
+            $receipt = CreditConsumption::query()->whereKey($session->credit_consumption_id)->first();
+            $grant = $receipt ? CreditGrant::query()->whereKey($receipt->credit_grant_id)
+                ->where('user_id', $user->getKey())->where('environment', $session->environment)
+                ->whereNull('revoked_at')->whereNull('held_at')->first() : null;
+            if (! $receipt || $receipt->user_id !== $user->getKey()
+                || $receipt->environment !== $session->environment
+                || ! $grant) {
+                throw new HttpException(403, 'SEARCH_ACCESS_REVOKED');
+            }
+            if (in_array($grant->source_type, CreditGrant::FREE_SOURCES, true)) {
+                return $session->expires_at;
+            }
+        } elseif ($this->wallet->balance($user, $session->environment, freeOnly: true) > 0) {
+            return $session->expires_at;
+        }
+
+        $planEnd = ActiveBillingPlan::endsAt($user, $session->environment);
+        abort_unless($planEnd, 403, 'SUBSCRIPTION_REQUIRED');
+
+        return $session->expires_at->min($planEnd);
     }
 
     public function allowsItem(PaidSearchSession $session, Item $item): bool

@@ -5,6 +5,7 @@ use App\Models\ExtraCode;
 use App\Models\Item;
 use App\Models\ItemFilterMapping;
 use App\Models\User;
+use App\Services\Credits\CreditWalletService;
 use App\Services\Mobile\ItemPriceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -226,8 +227,13 @@ test('authenticated item prices apply the saved user discount margin', function 
     $response = getJson("/api/items/{$item->id}");
 
     $response->assertOk();
-    $response->assertJsonPath('data.basePrice', 100);
-    $response->assertJsonPath('data.price', 80);
+    $response->assertJsonPath('data.basePrice', null);
+    $response->assertJsonPath('data.price', null);
+    giveActiveBillingPlan($user);
+    app(CreditWalletService::class)->grant($user, 'paid_cycle', 1, 'discount-qa', now('UTC')->toImmutable()->addWeek());
+    $search = $this->postJson('/api/v2/items/search', ['text' => 'DISC-100'], ['Idempotency-Key' => 'discount-qa-search-1234'])->assertOk();
+    $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$search->json('searchId'))
+        ->assertOk()->assertJsonPath('data.basePrice', 100)->assertJsonPath('data.price', 80);
     $response->assertJsonPath('data.discountPercent', 20);
     $response->assertJsonPath('data.priceAdjustmentPercent', -20);
 });

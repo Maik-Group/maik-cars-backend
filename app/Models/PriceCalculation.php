@@ -40,4 +40,3 @@ class PriceCalculation extends Model
         return $this->belongsTo(MetalPrice::class, 'metal_price_id');
     }
 }
-

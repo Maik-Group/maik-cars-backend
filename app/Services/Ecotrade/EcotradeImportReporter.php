@@ -8,17 +8,29 @@ use Illuminate\Console\Command;
 class EcotradeImportReporter
 {
     private int $total = 0;
+
     private int $valid = 0;
+
     private int $invalid = 0;
+
     private int $failed = 0;
+
     private int $brandsCreated = 0;
+
     private int $brandsUpdated = 0;
+
     private int $brandMediaImported = 0;
+
     private int $brandMediaSkipped = 0;
+
     private int $brandMediaFailed = 0;
+
     private int $productsCreated = 0;
+
     private int $productsUpdated = 0;
+
     private int $productsSkipped = 0;
+
     private int $productImagesSkipped = 0;
 
     /**

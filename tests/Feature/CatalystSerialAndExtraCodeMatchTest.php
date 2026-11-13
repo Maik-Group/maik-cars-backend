@@ -25,8 +25,8 @@ test('catalyst serial validator rejects control and placeholder serials', functi
 test('Ecotrade image resolver matches an item through an extra code', function () {
     $group = CarGroup::query()->create([
         'id' => (string) Str::uuid(),
-        'name' => 'ACURA',
-        'excel_sheet_name' => 'ACURA',
+        'name' => 'JAPAN',
+        'excel_sheet_name' => 'JAPAN',
         'region' => 'Japanese',
     ]);
 
@@ -69,8 +69,8 @@ test('Ecotrade image resolver matches an item through an extra code', function (
 test('an extra code shared by different primary serials is reported as ambiguous', function () {
     $group = CarGroup::query()->create([
         'id' => (string) Str::uuid(),
-        'name' => 'ACURA',
-        'excel_sheet_name' => 'ACURA',
+        'name' => 'JAPAN',
+        'excel_sheet_name' => 'JAPAN',
         'region' => 'Japanese',
     ]);
 
@@ -115,8 +115,8 @@ test('an extra code shared by different primary serials is reported as ambiguous
 test('an exact primary serial is preferred over another item using it as an extra code', function () {
     $group = CarGroup::query()->create([
         'id' => (string) Str::uuid(),
-        'name' => 'ACURA',
-        'excel_sheet_name' => 'ACURA',
+        'name' => 'JAPAN',
+        'excel_sheet_name' => 'JAPAN',
         'region' => 'Japanese',
     ]);
 

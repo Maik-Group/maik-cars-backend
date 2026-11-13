@@ -41,7 +41,7 @@ class MetalsSpotRequest extends FormRequest
         }
 
         return collect(explode(',', (string) $this->query('metals')))
-            ->map(fn(string $metal): string => strtolower(trim($metal)))
+            ->map(fn (string $metal): string => strtolower(trim($metal)))
             ->filter()
             ->values()
             ->all();

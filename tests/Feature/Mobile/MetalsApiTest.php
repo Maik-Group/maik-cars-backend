@@ -8,7 +8,7 @@ use function Pest\Laravel\getJson;
 uses(RefreshDatabase::class);
 
 test('metals spot endpoint returns normalized payload', function () {
-    $mock = \Mockery::mock(MetalsSpotService::class);
+    $mock = Mockery::mock(MetalsSpotService::class);
     app()->instance(MetalsSpotService::class, $mock);
     $mock->shouldReceive('all')->once()->andReturn([
         'source' => 'kitco.com',
@@ -41,7 +41,7 @@ test('metals spot endpoint returns normalized payload', function () {
 });
 
 test('metals spot endpoint filters by metals list', function () {
-    $mock = \Mockery::mock(MetalsSpotService::class);
+    $mock = Mockery::mock(MetalsSpotService::class);
     app()->instance(MetalsSpotService::class, $mock);
     $mock->shouldReceive('all')->once()->andReturn([
         'source' => 'api.metals.live',
@@ -63,7 +63,7 @@ test('metals spot endpoint filters by metals list', function () {
 });
 
 test('single metal endpoint returns not found for unknown metal', function () {
-    $mock = \Mockery::mock(MetalsSpotService::class);
+    $mock = Mockery::mock(MetalsSpotService::class);
     app()->instance(MetalsSpotService::class, $mock);
     $mock->shouldReceive('find')->with('unobtainium', 'USD')->once()->andReturn(null);
 
@@ -74,7 +74,7 @@ test('single metal endpoint returns not found for unknown metal', function () {
 });
 
 test('metals spot endpoint returns 503 when source is unavailable', function () {
-    $mock = \Mockery::mock(MetalsSpotService::class);
+    $mock = Mockery::mock(MetalsSpotService::class);
     app()->instance(MetalsSpotService::class, $mock);
     $mock->shouldReceive('all')->once()->andThrow(new RuntimeException('All price sources are currently unreachable.'));
 
