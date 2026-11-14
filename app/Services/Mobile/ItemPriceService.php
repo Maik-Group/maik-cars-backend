@@ -5,6 +5,7 @@ namespace App\Services\Mobile;
 use App\Models\Item;
 use App\Models\ItemFilterMapping;
 use App\Services\Pricing\FilterPriceCorrectionService;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Throwable;
 
 class ItemPriceService
@@ -158,6 +159,8 @@ class ItemPriceService
 
         try {
             $spot = $this->metalsSpotService->all($currency);
+        } catch (ServiceUnavailableHttpException $exception) {
+            throw $exception;
         } catch (Throwable) {
             return $this->priceCache[$currency] = [
                 'platinum' => 0.0,

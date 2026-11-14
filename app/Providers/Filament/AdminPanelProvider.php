@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Widgets\MetalTrendsChart;
 use App\Filament\Widgets\PlatformStats;
 use App\Http\Middleware\SetAdminLocale;
+use App\Support\DashboardCurrency;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -39,6 +40,14 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->profile()
             ->userMenuItems([
+                Action::make('currencyEuro')
+                    ->label(fn (): string => (DashboardCurrency::current() === 'EUR' ? '✓ ' : '').'EUR (€)')
+                    ->icon('heroicon-o-currency-euro')
+                    ->url(fn (): string => route('dashboard.currency', ['currency' => 'EUR'])),
+                Action::make('currencyDollar')
+                    ->label(fn (): string => (DashboardCurrency::current() === 'USD' ? '✓ ' : '').'USD ($)')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->url(fn (): string => route('dashboard.currency', ['currency' => 'USD'])),
                 Action::make('languageEnglish')
                     ->label('English')
                     ->icon('heroicon-o-language')

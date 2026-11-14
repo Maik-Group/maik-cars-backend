@@ -6,6 +6,7 @@ use App\Models\AdminNotificationCampaign;
 use App\Models\Item;
 use App\Models\MetalPrice;
 use App\Models\User;
+use App\Support\DashboardCurrency;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -45,8 +46,8 @@ class PlatformStats extends StatsOverviewWidget
                 ->icon('heroicon-o-paper-airplane')
                 ->color('primary'),
             Stat::make(
-                __('admin.ui.stats.latest_pt'),
-                is_numeric($latestPt) ? number_format((float) $latestPt, 2) : 'N/A'
+                __('admin.ui.stats.latest_pt', ['currency' => DashboardCurrency::current()]),
+                is_numeric($latestPt) ? DashboardCurrency::format(DashboardCurrency::fromUsd((float) $latestPt)) : 'N/A'
             )
                 ->description($latestPriceDescription)
                 ->icon('heroicon-o-chart-bar-square')

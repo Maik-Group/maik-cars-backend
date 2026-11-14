@@ -13,7 +13,7 @@ class ItemResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $currency = strtoupper((string) $request->query('currency', 'USD'));
+        $currency = strtoupper((string) $request->query('currency', 'USD')) === 'EUR' ? 'EUR' : 'USD';
         $restricted = app(EntitlementResolver::class)->enforcementEnabled();
         $averagePrice = $this->resource->getAttribute('api_average_price');
         $basePrice = $restricted ? 0.0 : (is_numeric($averagePrice)
@@ -42,6 +42,7 @@ class ItemResource extends JsonResource
             'image_thumb_url' => $this->image_thumb_url,
             'image_detail_url' => $this->image_detail_url,
             'saved_item' => (bool) ($this->saved_item ?? false),
+            'currency' => $currency,
             'base_price' => $restricted ? null : round($basePrice, 2),
             'price' => $restricted ? null : round($price, 2),
             'discount_percent' => round($discountPercent, 1),

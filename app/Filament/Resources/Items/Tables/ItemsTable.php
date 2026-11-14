@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\ItemFilterMapping;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Pricing\PricingReviewService;
+use App\Support\DashboardCurrency;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -76,9 +77,9 @@ class ItemsTable
                     ->formatStateUsing(fn (mixed $state): string => self::formatNumber($state, 4))
                     ->sortable(),
                 TextColumn::make('current_price')
-                    ->label(__('admin.ui.items.price_usd'))
-                    ->getStateUsing(fn (Item $record): float => app(ItemPriceService::class)->priceFor($record, 'USD'))
-                    ->money('USD'),
+                    ->label(__('admin.ui.items.price_usd', ['currency' => DashboardCurrency::current()]))
+                    ->getStateUsing(fn (Item $record): float => app(ItemPriceService::class)->priceFor($record, DashboardCurrency::current()))
+                    ->money(fn (): string => DashboardCurrency::current()),
                 TextColumn::make('pricing_review_status')
                     ->label(__('admin.ui.items.pricing_review'))
                     ->getStateUsing(fn (Item $record): string => $record->filterMapping?->status === ItemFilterMapping::STATUS_NEEDS_REVIEW
@@ -185,9 +186,9 @@ class ItemsTable
         $visibleSiblings = $siblings->filter(fn (Item $item): bool => $item->isApiVisible());
 
         $averagePrice = $visibleSiblings->isEmpty()
-            ? app(ItemPriceService::class)->priceFor($representative, 'USD')
+            ? app(ItemPriceService::class)->priceFor($representative, DashboardCurrency::current())
             : (float) $visibleSiblings
-                ->map(fn (Item $item): float => app(ItemPriceService::class)->priceFor($item, 'USD'))
+                ->map(fn (Item $item): float => app(ItemPriceService::class)->priceFor($item, DashboardCurrency::current()))
                 ->avg();
 
         return __('admin.ui.items.group_summary', [
@@ -198,7 +199,7 @@ class ItemsTable
             'pt' => self::formatNumber($representative->pt_ppm, 4),
             'pd' => self::formatNumber($representative->pd_ppm, 4),
             'rh' => self::formatNumber($representative->rh_ppm, 4),
-            'price' => number_format($averagePrice, 2),
+            'price' => DashboardCurrency::format($averagePrice),
         ]);
     }
 

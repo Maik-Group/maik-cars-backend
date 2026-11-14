@@ -32,7 +32,26 @@ class MetalsSpotService
      */
     public function all(string $currency = 'USD'): array
     {
-        $currency = strtoupper(trim($currency));
+        $currency = strtoupper(trim($currency)) === 'EUR' ? 'EUR' : 'USD';
+
+        if ($currency === 'EUR') {
+            // One canonical market snapshot, one verified exchange rate.
+            $usd = $this->all('USD');
+            $rate = app(CurrencyConversionService::class)->rateOrOne('USD', 'EUR');
+
+            return [
+                ...$usd,
+                'currency' => 'EUR',
+                'fx_rate' => $rate,
+                'data' => array_map(fn (array $row): array => [
+                    ...$row,
+                    'price_oz' => round((float) $row['price_oz'] * $rate, 4),
+                    'price_gram' => round((float) $row['price_oz'] * $rate / self::TROY_OZ_TO_GRAM, 2),
+                    'change_oz' => round((float) $row['change_oz'] * $rate, 2),
+                ], $usd['data']),
+            ];
+        }
+
         $ttl = (int) config('services.metals.cache_ttl', 60);
         $cacheKey = $this->cacheKey($currency);
 

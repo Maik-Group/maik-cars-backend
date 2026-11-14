@@ -26,7 +26,9 @@ class ThirdPartyMarketService
         if ($currencyUpper === 'EUR') {
             $spotEur = $this->metalsSpotService->all('EUR');
             $tripletDisplay = $this->tripletFromSpotRows($spotEur['data']);
-            $fxRate = $this->currencyConversionService->rateOrOne('USD', 'EUR');
+            $fxRate = isset($spotEur['fx_rate']) && (float) $spotEur['fx_rate'] > 0
+                ? (float) $spotEur['fx_rate']
+                : $this->currencyConversionService->rateOrOne('USD', 'EUR');
         }
 
         $rows = collect(range($days - 1, 0))

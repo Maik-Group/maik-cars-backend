@@ -53,12 +53,6 @@ class CalculatorController extends Controller
 
     private function resolveMetalPrice(): MetalPrice
     {
-        $storedPrice = MetalPrice::query()->latest('fetched_at')->first();
-
-        if ($storedPrice instanceof MetalPrice) {
-            return $storedPrice;
-        }
-
         $spot = $this->metalsSpotService->all('USD');
         $rows = collect($spot['data'] ?? [])->keyBy('key');
 

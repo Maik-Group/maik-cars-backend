@@ -7,8 +7,11 @@ use App\Models\Item;
 use App\Models\MetalPrice;
 use App\Models\User;
 use App\Services\Credits\CreditWalletService;
+use App\Services\Mobile\ItemPriceService;
 use App\Services\Mobile\MetalsSpotService;
+use App\Support\DashboardCurrency;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
@@ -442,6 +445,7 @@ test('charts endpoint returns last 14 daily points from metal sentinel spot data
 });
 
 test('calculator endpoint returns estimate breakdown and total', function () {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
     $price = MetalPrice::factory()->create([
         'pt_usd_per_oz' => 1555.2150,
         'pd_usd_per_oz' => 933.1290,
@@ -449,6 +453,7 @@ test('calculator endpoint returns estimate breakdown and total', function () {
         'fetched_at' => now(),
     ]);
 
+    mockItemMetalsSpotServiceAscii($price->ptPerGram(), $price->pdPerGram(), $price->rhPerGram());
     $expected = round((1 * ($price->pt_usd_per_oz / 31.1043)) + (0.5 * ($price->pd_usd_per_oz / 31.1043)), 2);
 
     $response = postJson('/api/calculator/estimate', [
@@ -467,7 +472,8 @@ test('calculator endpoint returns estimate breakdown and total', function () {
     expect((float) $response->json('estimate.totalUsd'))->toBe($expected);
 });
 
-test('calculator endpoint falls back to live spot prices when no snapshot exists', function () {
+test('calculator endpoint uses canonical live spot prices when no snapshot exists', function () {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
     mockItemMetalsSpotServiceAscii(ptPricePerGram: 10, pdPricePerGram: 20, rhPricePerGram: 30);
 
     expect(MetalPrice::query()->count())->toBe(0);
@@ -491,6 +497,8 @@ test('calculator endpoint falls back to live spot prices when no snapshot exists
 });
 
 test('calculator endpoint accepts full calculator page fields', function () {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
+    mockItemMetalsSpotServiceAscii();
     MetalPrice::factory()->create([
         'pt_usd_per_oz' => 1500,
         'pd_usd_per_oz' => 1500,
@@ -522,6 +530,8 @@ test('calculator endpoint accepts full calculator page fields', function () {
 });
 
 test('calculator endpoint accepts whole-number percent inputs', function () {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
+    mockItemMetalsSpotServiceAscii();
     MetalPrice::factory()->create([
         'pt_usd_per_oz' => 2113.00,
         'pd_usd_per_oz' => 1460.00,
@@ -552,6 +562,8 @@ test('calculator endpoint accepts whole-number percent inputs', function () {
 });
 
 test('calculator endpoint accepts percent-fraction rate payloads', function () {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
+    mockItemMetalsSpotServiceAscii();
     MetalPrice::factory()->create([
         'pt_usd_per_oz' => 1996.00,
         'pd_usd_per_oz' => 1409.00,
@@ -685,4 +697,78 @@ test('notifications endpoint returns last 14 change notifications', function () 
             ['iconUrl', 'imageUrl', 'meta' => ['ptUsdPerOz', 'pdUsdPerOz', 'rhUsdPerOz']],
         ],
     ]);
+});
+
+test('paid search valuation and dashboard pricing agree in both currencies without another debit', function (): void {
+    config([
+        'services.currency.public_url' => 'https://fx.example.test/latest',
+        'services.metals.base_url' => 'https://metals.example.test',
+        'services.metals.rapidapi_key' => 'test-only',
+    ]);
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://fx.example.test/*' => Http::response(['rates' => ['EUR' => 0.85]]),
+        'https://metals.example.test/*' => Http::response(['bid' => 3110.43, 'change' => 0, 'changePercent' => 0]),
+    ]);
+
+    $item = Item::factory()->create([
+        'car_group_id' => CarGroup::factory()->create()->id,
+        'serial_code' => 'FX-TEST-12345',
+        'normalized_serial' => 'FXTEST12345',
+        'model' => 'FX-TEST-12345',
+        'weight_kg' => 1.0,
+        'pt_ppm' => 1000,
+        'pd_ppm' => 0,
+        'rh_ppm' => 0,
+    ]);
+    $imagePath = mobileApiAttachImage($item);
+
+    try {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        giveActiveBillingPlan($user);
+        $wallet = app(CreditWalletService::class);
+        $wallet->grant($user, 'paid_cycle', 1, 'fx-qa', now('UTC')->toImmutable()->addWeek());
+        $search = $this->postJson('/api/v2/items/search', ['text' => 'FX-TEST-12345'], ['Idempotency-Key' => 'fx-qa-search-1234'])->assertOk();
+        $id = $search->json('searchId');
+        expect($id)->not->toBeNull();
+        $endpoint = '/api/v2/items/'.$item->id.'/valuation?searchId='.$id;
+        $usd = $this->getJson($endpoint.'&currency=USD')->assertOk()
+            ->assertJsonPath('data.currency', 'USD')->assertJsonPath('access.chargedCredits', 0);
+        $eur = $this->getJson($endpoint.'&currency=EUR')->assertOk()
+            ->assertJsonPath('data.currency', 'EUR')->assertJsonPath('access.chargedCredits', 0);
+
+        $pricing = app(ItemPriceService::class);
+        $this->withSession(['dashboard_currency' => 'EUR']);
+        $dashboard = $pricing->priceFor($item, DashboardCurrency::current());
+        expect((float) $eur->json('data.basePrice'))->toBe($dashboard)
+            ->and((float) $eur->json('data.basePrice'))->toBe(round((float) $usd->json('data.basePrice') * 0.85, 2))
+            ->and($wallet->balance($user))->toBe(0);
+    } finally {
+        @unlink($imagePath);
+    }
+});
+
+test('restricted catalog metadata still loads when the FX service is unavailable', function (): void {
+    $spot = Mockery::mock(MetalsSpotService::class);
+    $spot->shouldNotReceive('all');
+    app()->instance(MetalsSpotService::class, $spot);
+
+    $item = Item::factory()->create([
+        'car_group_id' => CarGroup::factory()->create()->id,
+        'serial_code' => 'FX-UNAVAILABLE-101',
+        'weight_kg' => 1,
+        'pt_ppm' => 100,
+        'pd_ppm' => 0,
+        'rh_ppm' => 0,
+    ]);
+    $imagePath = mobileApiAttachImage($item);
+
+    try {
+        $this->getJson('/api/items/'.$item->id.'?currency=EUR')
+            ->assertOk()->assertJsonPath('data.currency', 'EUR')
+            ->assertJsonPath('data.price', null);
+    } finally {
+        @unlink($imagePath);
+    }
 });

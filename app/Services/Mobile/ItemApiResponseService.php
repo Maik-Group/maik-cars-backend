@@ -3,6 +3,7 @@
 namespace App\Services\Mobile;
 
 use App\Models\Item;
+use App\Services\Subscriptions\EntitlementResolver;
 use Illuminate\Support\Collection;
 
 class ItemApiResponseService
@@ -27,7 +28,7 @@ class ItemApiResponseService
             return $items;
         }
 
-        return $this->applyAveragePrices($this->deduplicate($items));
+        return $this->applyAverages($this->deduplicate($items));
     }
 
     /**
@@ -61,6 +62,12 @@ class ItemApiResponseService
      */
     public function applyAverages(Collection $items): Collection
     {
+        // Browse and paid-search listing responses deliberately hide valuations.
+        // Do not depend on FX/market services to render these free metadata rows.
+        if (app(EntitlementResolver::class)->enforcementEnabled()) {
+            return $items;
+        }
+
         return $this->applyAveragePrices($items);
     }
 

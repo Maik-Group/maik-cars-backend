@@ -7,6 +7,7 @@ use App\Models\ItemFilterMapping;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Pricing\FilterPriceCorrectionService;
 use App\Services\Pricing\PricingReviewService;
+use App\Support\DashboardCurrency;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
@@ -63,11 +64,11 @@ class ItemFilterMappingsTable
                 TextColumn::make('current_price')
                     ->label(__('admin.ui.pricing_review.current_price'))
                     ->getStateUsing(fn (ItemFilterMapping $record): float => self::price($record, FilterPriceCorrectionService::MODE_DISABLED))
-                    ->money('USD'),
+                    ->money(fn (): string => DashboardCurrency::current()),
                 TextColumn::make('weight_only_price')
                     ->label(__('admin.ui.pricing_review.price_after_correction'))
                     ->getStateUsing(fn (ItemFilterMapping $record): float => self::price($record, FilterPriceCorrectionService::MODE_WEIGHT_ONLY))
-                    ->money('USD'),
+                    ->money(fn (): string => DashboardCurrency::current()),
                 TextColumn::make('api_status')
                     ->label(__('admin.ui.pricing_review.customer_visibility'))
                     ->getStateUsing(fn (ItemFilterMapping $record): string => $record->status === ItemFilterMapping::STATUS_NEEDS_REVIEW
@@ -220,8 +221,8 @@ class ItemFilterMappingsTable
                                         'model' => $model,
                                         'weight' => number_format((float) $row['original_weight_kg'], 3),
                                         'net' => $net,
-                                        'current' => number_format((float) $row['current_price_usd'], 2),
-                                        'proposed' => number_format((float) $row['proposed_price_usd'], 2),
+                                        'current' => DashboardCurrency::format(DashboardCurrency::fromUsd((float) $row['current_price_usd'])),
+                                        'proposed' => DashboardCurrency::format(DashboardCurrency::fromUsd((float) $row['proposed_price_usd'])),
                                         'delta' => $delta,
                                         'safety' => $safety,
                                     ]);
@@ -375,7 +376,7 @@ class ItemFilterMappingsTable
             return 0.0;
         }
 
-        return app(ItemPriceService::class)->priceForMappingPreview($record->item, $record, $mode, 'USD');
+        return app(ItemPriceService::class)->priceForMappingPreview($record->item, $record, $mode, DashboardCurrency::current());
     }
 
     private static function formattedWeight(?float $weight): ?string

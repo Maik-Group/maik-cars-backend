@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\ItemFilterMapping;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Pricing\PricingReviewService;
+use App\Support\DashboardCurrency;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -105,7 +106,7 @@ class ItemForm
                             ->label(__('admin.ui.item_form.current_price'))
                             ->visible(fn (?Item $record): bool => $record instanceof Item)
                             ->content(fn (?Item $record): string => $record instanceof Item
-                                ? '$'.number_format(app(ItemPriceService::class)->priceFor($record, 'USD'), 2)
+                                ? DashboardCurrency::format(app(ItemPriceService::class)->priceFor($record, DashboardCurrency::current()))
                                 : '—'),
                         Textarea::make('details')
                             ->label(__('admin.ui.item_form.details'))

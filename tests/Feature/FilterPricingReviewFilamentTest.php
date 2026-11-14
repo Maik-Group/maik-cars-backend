@@ -9,12 +9,14 @@ use App\Models\User;
 use App\Services\Mobile\MetalsSpotService;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Http::fake(['*' => Http::response(['rates' => ['EUR' => 0.85]])]);
     Role::query()->firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
 
     $this->admin = User::factory()->create(['is_active' => true]);

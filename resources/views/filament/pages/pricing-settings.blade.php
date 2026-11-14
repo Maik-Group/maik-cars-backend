@@ -54,13 +54,13 @@
                                 <td class="max-w-48 break-words px-3 py-3 text-gray-700 sm:max-w-56 sm:px-4 dark:text-gray-300">{{ $row['model'] }}</td>
                                 <td class="max-w-40 break-words px-3 py-3 text-gray-700 sm:max-w-48 sm:px-4 dark:text-gray-300">{{ $row['group'] }}</td>
                                 <td class="whitespace-nowrap px-3 py-3 text-right text-gray-700 sm:px-4 dark:text-gray-300">
-                                    ${{ number_format($row['current_price'], 2) }}
+                                    {{ \App\Support\DashboardCurrency::format($row['current_price']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-3 text-right font-semibold text-gray-950 sm:px-4 dark:text-white">
-                                    ${{ number_format($row['preview_price'], 2) }}
+                                    {{ \App\Support\DashboardCurrency::format($row['preview_price']) }}
                                 </td>
                                 <td class="whitespace-nowrap px-3 py-3 text-right text-gray-700 sm:px-4 dark:text-gray-300">
-                                    {{ $row['difference'] >= 0 ? '+' : '' }}${{ number_format($row['difference'], 2) }}
+                                    {{ $row['difference'] >= 0 ? '+' : '' }}{{ \App\Support\DashboardCurrency::format($row['difference']) }}
                                     ({{ $row['change_percent'] >= 0 ? '+' : '' }}{{ number_format($row['change_percent'], 2) }}%)
                                 </td>
                             </tr>

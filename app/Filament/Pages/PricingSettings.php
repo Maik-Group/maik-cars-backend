@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Mobile\ItemPriceSettingsService;
 use App\Services\Pricing\FilterPriceCorrectionService;
+use App\Support\DashboardCurrency;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -234,7 +235,7 @@ class PricingSettings extends Page implements HasSchemas
                     $this->savedPlatinumDeductionPercent,
                     $this->savedPalladiumDeductionPercent,
                     $this->savedRhodiumDeductionPercent,
-                    'USD',
+                    DashboardCurrency::current(),
                     $this->savedMetalDeductionsEnabled,
                     $this->savedFilterCorrectionMode,
                 );
@@ -244,7 +245,7 @@ class PricingSettings extends Page implements HasSchemas
                     $preview['platinum_deduction_percent'],
                     $preview['palladium_deduction_percent'],
                     $preview['rhodium_deduction_percent'],
-                    'USD',
+                    DashboardCurrency::current(),
                     $preview['metal_deductions_enabled'],
                     $preview['filter_correction_mode'],
                 );

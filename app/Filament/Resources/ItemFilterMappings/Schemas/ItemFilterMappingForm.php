@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\ItemFilterMapping;
 use App\Services\Mobile\ItemPriceService;
 use App\Services\Pricing\FilterPriceCorrectionService;
+use App\Support\DashboardCurrency;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -109,12 +110,12 @@ class ItemFilterMappingForm
             $item,
             $mapping,
             FilterPriceCorrectionService::MODE_DISABLED,
-            'USD',
+            DashboardCurrency::current(),
         );
 
         if (! ($assay['applied'] ?? false)) {
             return __('admin.ui.pricing_review.preview_not_available', [
-                'current' => number_format($currentPrice, 2),
+                'current' => DashboardCurrency::format($currentPrice),
                 'reason' => self::previewReason((string) ($assay['reason'] ?? 'missing_reference')),
             ]);
         }
@@ -123,7 +124,7 @@ class ItemFilterMappingForm
             $item,
             $mapping,
             FilterPriceCorrectionService::MODE_WEIGHT_ONLY,
-            'USD',
+            DashboardCurrency::current(),
         );
 
         $delta = $previewPrice - $currentPrice;
@@ -132,8 +133,8 @@ class ItemFilterMappingForm
             : 0.0;
 
         return __('admin.ui.pricing_review.preview_line', [
-            'current' => number_format($currentPrice, 2),
-            'preview' => number_format($previewPrice, 2),
+            'current' => DashboardCurrency::format($currentPrice),
+            'preview' => DashboardCurrency::format($previewPrice),
             'delta' => sprintf('%+.2f', $deltaPercent),
             'weight' => number_format((float) $assay['weight_kg'], 3),
         ]);

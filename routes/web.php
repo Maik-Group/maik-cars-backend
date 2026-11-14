@@ -13,6 +13,14 @@ Route::get('/dashboard/language/{locale}', function (Request $request, string $l
     return redirect()->back();
 })->name('dashboard.language');
 
+Route::get('/dashboard/currency/{currency}', function (Request $request, string $currency) {
+    abort_unless(in_array($currency, ['EUR', 'USD'], true), 404);
+
+    $request->session()->put('dashboard_currency', $currency);
+
+    return redirect()->back();
+})->middleware('auth')->name('dashboard.currency');
+
 Route::get('/', function () {
     $defaultStoreIds = [
         AppPlatform::ANDROID => 'maik.cat.android',

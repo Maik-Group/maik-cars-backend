@@ -3,6 +3,7 @@
 namespace App\Services\Mobile;
 
 use App\Models\MetalPrice;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class CalculatorService
 {
@@ -25,7 +26,15 @@ class CalculatorService
         string $currency = 'USD'
     ): array {
         $currency = strtoupper(trim($currency)) === 'EUR' ? 'EUR' : 'USD';
-        $fxRate = $this->currencyConversionService->rateOrOne('USD', 'EUR');
+        try {
+            $fxRate = $this->currencyConversionService->rateOrOne('USD', 'EUR');
+        } catch (ServiceUnavailableHttpException $exception) {
+            if ($currency === 'EUR') {
+                throw $exception;
+            }
+
+            $fxRate = null;
+        }
 
         $weightUnit = strtolower(trim($weightUnit)) === 'kg' ? 'kg' : 'g';
         $weightInput = max($weight, 0);
@@ -52,7 +61,7 @@ class CalculatorService
         $rhValue = $rhGrams * $rhUsdPerGram * $rhRate * $dryFactor;
 
         $totalUsd = $ptValue + $pdValue + $rhValue;
-        $totalEur = $totalUsd * $fxRate;
+        $totalEur = $fxRate === null ? null : round($totalUsd * $fxRate, 2);
 
         return [
             'currency' => $currency,
@@ -73,23 +82,23 @@ class CalculatorService
                     'grams' => round($ptGrams, 6),
                     'usdPerGram' => round($ptUsdPerGram, 2),
                     'valueUsd' => round($ptValue, 2),
-                    'valueEur' => round($ptValue * $fxRate, 2),
+                    'valueEur' => $fxRate === null ? null : round($ptValue * $fxRate, 2),
                 ],
                 'pd' => [
                     'grams' => round($pdGrams, 6),
                     'usdPerGram' => round($pdUsdPerGram, 2),
                     'valueUsd' => round($pdValue, 2),
-                    'valueEur' => round($pdValue * $fxRate, 2),
+                    'valueEur' => $fxRate === null ? null : round($pdValue * $fxRate, 2),
                 ],
                 'rh' => [
                     'grams' => round($rhGrams, 6),
                     'usdPerGram' => round($rhUsdPerGram, 2),
                     'valueUsd' => round($rhValue, 2),
-                    'valueEur' => round($rhValue * $fxRate, 2),
+                    'valueEur' => $fxRate === null ? null : round($rhValue * $fxRate, 2),
                 ],
             ],
             'totalUsd' => round($totalUsd, 2),
-            'totalEur' => round($totalEur, 2),
+            'totalEur' => $totalEur,
         ];
     }
 

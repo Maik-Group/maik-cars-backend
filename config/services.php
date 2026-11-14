@@ -54,6 +54,7 @@ return [
         'public_url' => env('CURRENCY_PUBLIC_API_URL', 'https://api.frankfurter.app/latest'),
         'timeout' => (int) env('CURRENCY_HTTP_TIMEOUT_SECONDS', 6),
         'cache_ttl' => (int) env('CURRENCY_CACHE_TTL_SECONDS', 1800),
+        'fallback_ttl' => (int) env('CURRENCY_FALLBACK_TTL_SECONDS', 604800),
     ],
 
     'gemini' => [

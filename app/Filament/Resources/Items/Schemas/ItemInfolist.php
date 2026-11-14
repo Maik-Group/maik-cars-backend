@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Items\Schemas;
 
 use App\Models\Item;
 use App\Services\Mobile\ItemPriceService;
+use App\Support\DashboardCurrency;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -33,7 +34,7 @@ class ItemInfolist
                     TextEntry::make('rh_ppm')->label('RH PPM'),
                     TextEntry::make('current_price')
                         ->label(__('admin.ui.item_form.current_price'))
-                        ->getStateUsing(fn (Item $record): string => '$'.number_format(app(ItemPriceService::class)->priceFor($record, 'USD'), 2)),
+                        ->getStateUsing(fn (Item $record): string => DashboardCurrency::format(app(ItemPriceService::class)->priceFor($record, DashboardCurrency::current()))),
                     TextEntry::make('details')
                         ->label(__('admin.ui.item_form.details'))
                         ->placeholder('—')

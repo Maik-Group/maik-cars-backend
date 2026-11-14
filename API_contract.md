@@ -1160,3 +1160,12 @@ Expected client behavior:
 4. Call `GET /api/notifications` to sync inbox.
 5. Call single/bulk read endpoint based on user action.
 6. Update UI badge from `unreadCount`.
+
+## Centralized pricing and display currency (EUR / USD)
+
+- The mobile preference and dashboard default are EUR. Legacy API clients omitting `currency` keep the USD default for compatibility.
+- Catalog list/details/similar items, home top items, saved items and authorized valuation accept `currency=EUR` or `currency=USD`. Catalog item payloads include `currency` alongside the existing `price` and `basePrice` values (camel-cased HTTP responses).
+- `GET /api/v2/items/{item}/valuation?searchId={id}&currency=EUR` returns the server-calculated amount and currency for the already authorized paid search. Changing currency does not create a search or charge another credit. Restricted catalog metadata remains price-free.
+- The server obtains one USD Metal Sentinel spot snapshot and derives EUR using the Frankfurter reference exchange rate. Mobile clients must format the returned amount without performing another currency conversion. Use currency-specific query keys and never reuse a valuation in the wrong currency.
+- Exchange rates are cached for 30 minutes by default. A valid last-known rate can be used for up to seven days if the provider is unavailable. Without a valid rate, EUR pricing is unavailable (HTTP 503); USD remains usable. The calculator can return null EUR amounts when requested in USD during an FX outage. Reference rates are published on business days, not tick-by-tick.
+- Configure `CURRENCY_PUBLIC_API_URL`, `CURRENCY_HTTP_TIMEOUT_SECONDS`, `CURRENCY_CACHE_TTL_SECONDS` and `CURRENCY_FALLBACK_TTL_SECONDS` on the backend. Stripe offer and payment currencies are independent of catalog display currency.
