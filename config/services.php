@@ -18,7 +18,6 @@ return [
         'api_key' => env('MAILTRAP_API_TOKEN'),
         'from_address' => env('MAILTRAP_FROM_ADDRESS'),
         'from_name' => env('MAILTRAP_FROM_NAME', 'Maik Cat'),
-        'auth_queue_connection' => env('AUTH_EMAIL_QUEUE_CONNECTION', 'auth-email'),
     ],
 
     'postmark' => [

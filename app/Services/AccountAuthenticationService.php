@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
-use App\Jobs\SendAuthEmailCode;
+use App\Exceptions\AuthEmailDeliveryException;
 use App\Models\User;
 use App\Services\Credits\CreditWalletService;
 use Closure;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -18,7 +17,7 @@ use Throwable;
 
 class AccountAuthenticationService
 {
-    public function __construct(private readonly CreditWalletService $wallet) {}
+    public function __construct(private readonly CreditWalletService $wallet, private readonly AuthEmailSender $sender) {}
 
     public function requestRegistration(string $email): void
     {
@@ -43,7 +42,7 @@ class AccountAuthenticationService
             return;
         }
 
-        DB::transaction(function () use ($email, $purpose, $user): void {
+        $delivery = DB::transaction(function () use ($email, $purpose, $user): array {
             DB::table('auth_email_codes')->insertOrIgnore([
                 'email' => $email,
                 'purpose' => $purpose,
@@ -57,7 +56,7 @@ class AccountAuthenticationService
                 throw new HttpException(429, 'Wait 60 seconds before requesting another code.');
             }
 
-            // A worker owns this generation while its bounded provider request is in flight.
+            // Keep concurrent requests from replacing an in-flight delivery.
             if ($challenge->delivery_lease_until && Carbon::parse($challenge->delivery_lease_until)->isFuture()) {
                 throw new HttpException(429, 'A code request is still being processed.');
             }
@@ -72,34 +71,60 @@ class AccountAuthenticationService
                 'expires_at' => $expiresAt,
                 'sent_at' => now(),
                 'delivery_id' => $deliveryId,
-                'delivery_lease_until' => null,
+                'delivery_lease_until' => now()->addSeconds(30),
                 'delivered_at' => null,
                 'delivery_failed_at' => null,
                 'provider_message_id' => null,
             ]);
 
-            $job = (new SendAuthEmailCode($deliveryId, $challenge->id, $purpose, $code, $expiresAt->timestamp))
-                ->onConnection(config('services.mailtrap.auth_queue_connection'))
-                ->onQueue('auth-emails');
-
-            DB::afterCommit(function () use ($job, $deliveryId): void {
-                try {
-                    Bus::dispatch($job);
-                } catch (Throwable $exception) {
-                    DB::table('auth_email_codes')->where('delivery_id', $deliveryId)->update([
-                        'delivery_failed_at' => now(),
-                        'expires_at' => null,
-                        'code_hash' => '',
-                    ]);
-                    Log::error('Authentication email could not be enqueued.', [
-                        'delivery_id' => $deliveryId,
-                        'exception_type' => $exception::class,
-                    ]);
-
-                    throw new HttpException(503, 'Email requests are temporarily unavailable. Please try again.');
-                }
-            });
+            return ['id' => $challenge->id, 'delivery_id' => $deliveryId, 'code' => $code];
         });
+
+        // The challenge is persisted before contacting Mailtrap; no queue or worker is involved.
+        $generation = DB::table('auth_email_codes')
+            ->where('id', $delivery['id'])
+            ->where('delivery_id', $delivery['delivery_id']);
+        $started = hrtime(true);
+
+        try {
+            $messageId = $this->sender->sendCode($email, $delivery['code'], $purpose);
+        } catch (Throwable $exception) {
+            $failure = $exception instanceof AuthEmailDeliveryException
+                ? $exception
+                : new AuthEmailDeliveryException('unexpected');
+
+            $generation->update([
+                'delivery_failed_at' => now(),
+                'delivery_lease_until' => null,
+                'expires_at' => null,
+                'code_hash' => '',
+            ]);
+
+            Log::warning('Authentication email delivery failed.', [
+                'purpose' => $purpose,
+                'delivery_id' => $delivery['delivery_id'],
+                'category' => $failure->category,
+                'http_status' => $failure->httpStatus,
+                'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
+            ]);
+
+            // Keep the same eligibility-neutral response even on provider failure.
+            return;
+        }
+
+        $generation->update([
+            'delivered_at' => now(),
+            'provider_message_id' => $messageId,
+            'delivery_lease_until' => null,
+        ]);
+
+        Log::info('Mailtrap accepted authentication email.', [
+            'purpose' => $purpose,
+            'delivery_id' => $delivery['delivery_id'],
+            'http_status' => 200,
+            'message_id' => $messageId,
+            'duration_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
+        ]);
     }
 
     public function register(string $email, string $code, string $name, string $password): void

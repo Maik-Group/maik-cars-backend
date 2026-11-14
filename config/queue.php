@@ -31,15 +31,6 @@ return [
 
     'connections' => [
 
-        'auth-email' => [
-            'driver' => 'database',
-            'connection' => null,
-            'table' => 'jobs',
-            'queue' => 'auth-emails',
-            'retry_after' => 90,
-            'after_commit' => true,
-        ],
-
         'sync' => [
             'driver' => 'sync',
         ],

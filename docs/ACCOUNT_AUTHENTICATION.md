@@ -21,6 +21,8 @@ Use an actual Email Sending API token from Mailtrap, not a Sandbox SMTP password
 
 After configuring the environment, run `php artisan config:clear` and review the pending migration `php artisan migrate:status`. Apply the migration in the intended environment with `php artisan migrate` (production: normal approved deployment). Ensure the existing app_user role has been created by RolesAndPermissionsSeeder.
 
+Authentication email requests send directly through Mailtrap after saving the challenge. No authentication queue, worker, or cron is required. The provider call is bounded to 15 seconds; failures are logged without secrets, invalidate the generation, and retain the eligibility-neutral response. Users may request a new code after the existing cooldown. Other background jobs are unchanged.
+
 Mailtrap delivery logs: https://mailtrap.io/sending/email_logs
 
 ## Branded authentication emails
@@ -43,7 +45,7 @@ All routes are under /api/auth. JSON requests, Accept: application/json.
 
 Snake case password_confirmation is also accepted by the API middleware. Request/resend returns 200 with a generic message. Verify returns 201 and creates the account only after successful proof of email ownership; reset returns 200. Neither returns an auth token. Sign in through the existing login API after completion.
 
-Invalid/expired/used codes return 422. Resend cooldown is 60 seconds, maximum 5 requests per hour per email/purpose, maximum 5 incorrect attempts per code; codes expire after 10 minutes. Auth code endpoints also have a per-IP throttle. Sending errors return 503 without exposing provider credentials or code. Codes are keyed HMAC digests using APP_KEY, never stored as plaintext. Reset is restricted to active app accounts, revokes API tokens and preserves existing authorized-device binding. Existing active mobile accounts without verified email must complete the forgot-password email-code flow before login or protected API access. Their previous tokens cannot bypass this check. Administrative roles are exempt from the mobile verification policy, and logout remains available. Wallet pricing, balances and paid-search entitlement rules are unchanged. Email changes via mobile profile are deliberately blocked until a separate verified-email-change flow exists. Import and manual metals refresh routes require the existing manage_items permission.
+Invalid/expired/used codes return 422. Resend cooldown is 60 seconds, maximum 5 requests per hour per email/purpose, maximum 5 incorrect attempts per code; codes expire after 10 minutes. Auth code endpoints also have a per-IP throttle. Provider failures are recorded server-side, invalidate the failed code, and return the same generic acknowledgment to avoid disclosing account eligibility. Codes are keyed HMAC digests using APP_KEY, never stored as plaintext. Reset is restricted to active app accounts, revokes API tokens and preserves existing authorized-device binding. Existing active mobile accounts without verified email must complete the forgot-password email-code flow before login or protected API access. Their previous tokens cannot bypass this check. Administrative roles are exempt from the mobile verification policy, and logout remains available. Wallet pricing, balances and paid-search entitlement rules are unchanged. Email changes via mobile profile are deliberately blocked until a separate verified-email-change flow exists. Import and manual metals refresh routes require the existing manage_items permission.
 
 ## QA
 
