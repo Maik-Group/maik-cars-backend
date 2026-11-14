@@ -9,6 +9,7 @@ use App\Services\Credits\CreditWalletService;
 use App\Services\Credits\PaidSearchService;
 use App\Services\Mobile\ItemApiResponseService;
 use App\Services\Mobile\ItemPriceService;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -55,13 +56,19 @@ class PaidSearchController extends Controller
     public function valuation(Request $request, Item $item): JsonResponse
     {
         $data = $request->validate([
-            'search_id' => ['required', 'uuid'],
+            'search_id' => [$request->isMethod('GET') ? 'sometimes' : 'required', 'uuid'],
             'currency' => ['sometimes', 'in:USD,EUR'],
         ]);
         $user = $request->user();
-        $session = $this->searches->authorized($user, $data['search_id']);
+        abort_unless($user->is_active, 403, 'ACCOUNT_INACTIVE');
+        $planEnd = ActiveBillingPlan::endsAt($user, (string) config('stripe_billing.environment'));
+        abort_unless($planEnd, 403, 'SUBSCRIPTION_REQUIRED');
         abort_unless($item->isApiVisible(), 404);
-        if (! $this->searches->allowsItem($session, $item)) {
+
+        // A subscribed account can open any visible item directly without a search or debit.
+        // Existing clients that supply a receipt keep their original ownership/scope checks.
+        $session = isset($data['search_id']) ? $this->searches->authorized($user, $data['search_id']) : null;
+        if ($session && ! $this->searches->allowsItem($session, $item)) {
             throw new HttpException(403, 'ITEM_NOT_IN_PAID_SEARCH');
         }
 
@@ -74,7 +81,10 @@ class PaidSearchController extends Controller
         if (! is_finite($base) || $base <= 0) {
             throw new HttpException(503, 'VALUATION_UNAVAILABLE');
         }
-        $expires = now('UTC')->addSeconds(90)->min($this->searches->accessEndsAt($user, $session));
+        $expires = now('UTC')->addSeconds(90)->min($planEnd);
+        if ($session) {
+            $expires = $expires->min($this->searches->accessEndsAt($user, $session));
+        }
 
         return response()->json([
             'data' => [
@@ -83,7 +93,7 @@ class PaidSearchController extends Controller
                 'weightKg' => $item->weight_kg, 'ptPpm' => $item->pt_ppm,
                 'pdPpm' => $item->pd_ppm, 'rhPpm' => $item->rh_ppm,
             ],
-            'access' => ['chargedCredits' => 0, 'searchId' => $session->getKey()],
+            'access' => ['chargedCredits' => 0, 'searchId' => $session?->getKey()],
             'validUntil' => $expires->toIso8601String(),
         ])->header('Cache-Control', 'private, no-store');
     }

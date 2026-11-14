@@ -57,3 +57,20 @@ it('never charges repeat legacy product open attempts or accepts obsolete revali
     $this->assertDatabaseCount('credit_consumptions', 0);
     expect(CreditLedgerEntry::query()->where('entry_type', 'spend')->count())->toBe(0);
 });
+
+it('allows active subscribers to view a visible item without a search or credits and hides prices for everyone else', function (): void {
+    $user = User::factory()->create();
+    $item = Item::factory()->create(['weight_kg' => 1, 'pt_ppm' => 100, 'pd_ppm' => 0, 'rh_ppm' => 0]);
+    $route = '/api/v2/items/'.$item->id.'/valuation';
+    $this->getJson($route)->assertUnauthorized();
+    Sanctum::actingAs($user);
+    $this->getJson($route)->assertForbidden()->assertJsonMissingPath('data');
+    app(CreditWalletService::class)->grant($user, 'free_grant', 5, 'free:direct-valuation', null);
+    $this->getJson($route)->assertForbidden()->assertJsonMissingPath('data');
+    $plan = giveActiveBillingPlan($user);
+    $this->getJson($route)->assertOk()->assertJsonPath('data.itemId', $item->id)->assertJsonPath('access.chargedCredits', 0)->assertJsonPath('access.searchId', null);
+    $this->assertDatabaseCount('credit_consumptions', 0);
+    $plan->update(['period_end' => now('UTC')]);
+    $this->getJson($route)->assertForbidden()->assertJsonMissingPath('data');
+    $this->getJson('/api/items/'.$item->id)->assertOk()->assertJsonPath('data.price', null);
+});

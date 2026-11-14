@@ -31,7 +31,7 @@ function makePaidSearchItem(string $serial): Item
     ]);
 }
 
-it('uses only free credits without a subscription and honors the last free search receipt', function (): void {
+it('uses only free credits without a subscription but hides valuation even with a search receipt', function (): void {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
     $item = makePaidSearchItem('FREE-CREDIT-TEST');
@@ -45,7 +45,7 @@ it('uses only free credits without a subscription and honors the last free searc
     $id = $this->postJson($path, $payload, $headers)->assertOk()->json('searchId');
     $this->postJson($path, $payload, $headers)->assertOk()->assertJsonPath('searchId', $id);
     $this->getJson($path.'/'.$id)->assertOk();
-    $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$id)->assertOk();
+    $this->getJson('/api/v2/items/'.$item->id.'/valuation?searchId='.$id)->assertForbidden()->assertJsonMissingPath('data');
     $this->postJson($path, $payload, ['Idempotency-Key' => 'free-credit-exhausted-test'])->assertForbidden();
     expect($free->fresh()->remaining)->toBe(0)
         ->and($paid->fresh()->remaining)->toBe(2)
@@ -143,7 +143,7 @@ it('scopes free detail reads to the paid search result and search owner', functi
     $searchId = $this->postJson('/api/v2/items/search', ['text' => 'MATCH-ALPHA'],
         ['Idempotency-Key' => 'search-access-check-12345'])->assertOk()->json('searchId');
     $this->getJson('/api/v2/items/'.$notMatched->id.'/valuation?searchId='.$searchId)->assertStatus(403);
-    $this->getJson('/api/v2/items/'.$matched->id.'/valuation')->assertStatus(422);
+    $this->getJson('/api/v2/items/'.$matched->id.'/valuation')->assertOk()->assertJsonPath('access.chargedCredits', 0);
     $otherUser = User::factory()->create();
     giveActiveBillingPlan($otherUser);
     Sanctum::actingAs($otherUser);
