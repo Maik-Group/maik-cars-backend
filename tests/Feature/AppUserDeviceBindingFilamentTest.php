@@ -28,12 +28,10 @@ test('admin can reset an app users authorized device from the table', function (
     ]);
     $appUser->createToken('mobile-api-token');
 
-    $action = TestAction::make('resetAuthorizedDevice')->table($appUser);
-
     Livewire::actingAs($this->admin)
         ->test(ListAppUsers::class)
-        ->assertActionVisible($action)
-        ->callAction($action)
+        ->assertActionVisible(TestAction::make('resetAuthorizedDevice')->table($appUser))
+        ->callAction(TestAction::make('resetAuthorizedDevice')->table($appUser))
         ->assertNotified('Authorized device reset');
 
     $appUser->refresh();
@@ -44,35 +42,10 @@ test('admin can reset an app users authorized device from the table', function (
         ->and($appUser->tokens()->count())->toBe(0);
 });
 
-test('admin can reset devices for all app users from the header action', function (): void {
-    $first = User::factory()->create([
-        'authorized_device_id' => 'device-a',
-        'authorized_device_token' => 'fcm-a',
-        'fcm_token' => 'fcm-a',
-        'device_bound_at' => now()->subHour(),
-    ]);
-    $second = User::factory()->create([
-        'authorized_device_id' => 'device-b',
-        'authorized_device_token' => 'fcm-b',
-        'fcm_token' => 'fcm-b',
-        'device_bound_at' => now()->subMinutes(30),
-    ]);
-    $first->createToken('phone-a');
-    $second->createToken('phone-b');
-
+test('global reset devices action is not present in the simplified header', function (): void {
     Livewire::actingAs($this->admin)
         ->test(ListAppUsers::class)
-        ->assertActionVisible(TestAction::make('resetAllAuthorizedDevices'))
-        ->callAction(TestAction::make('resetAllAuthorizedDevices'))
-        ->assertNotified();
-
-    foreach ([$first, $second] as $user) {
-        $user->refresh();
-        expect($user->authorized_device_id)->toBeNull()
-            ->and($user->authorized_device_token)->toBeNull()
-            ->and($user->device_bound_at)->toBeNull()
-            ->and($user->tokens()->count())->toBe(0);
-    }
+        ->assertDontSee(__('admin.ui.app_users.reset_all'));
 });
 
 test('reset device action is hidden until the account is bound', function (): void {

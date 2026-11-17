@@ -104,7 +104,7 @@ test('catalog changes validate durations, audit reasons and reject direct unauth
     $catalog->savePlan($superAdmin, $plan, [...$attributes, 'daily_allowance' => 8], 'Prospective revision');
     expect($plan->fresh()->revision)->toBe(2);
     $this->assertDatabaseCount('subscription_audit_logs', 2);
-    $this->actingAs($superAdmin)->get(SubscriptionPlanResource::getUrl('edit', ['record' => $plan]))->assertOk()->assertSee('Existing agreements retain their benefits')->assertDontSee('Daily allowance');
+    $this->actingAs($superAdmin)->get(SubscriptionPlanResource::getUrl('edit', ['record' => $plan]))->assertOk()->assertSee('The plan credits are granted')->assertDontSee('Daily allowance')->assertSee('Credits included');
     $this->actingAs($admin)->get(SubscriptionPlanResource::getUrl('edit', ['record' => $plan]))->assertForbidden();
 });
 

@@ -8,6 +8,7 @@ use App\Models\BillingPlanPrice;
 use App\Models\BillingSubscription;
 use App\Models\CreditGrant;
 use App\Models\StripeCustomer;
+use App\Models\SubscriptionEntitlement;
 use App\Services\Subscriptions\StripeBillingGateway;
 use App\Services\Subscriptions\StripeCheckoutService;
 use App\Services\Subscriptions\StripeOrderReconciliationService;
@@ -123,6 +124,12 @@ class StripeBillingController extends Controller
             || $subscription->period_end->lessThan($prepaid->period_end));
         $planName = $subscription ? BillingPlanPrice::query()->whereKey($subscription->billing_plan_price_id)
             ->where('environment', $environment)->first() : null;
+        $administrativeGrant = SubscriptionEntitlement::query()
+            ->with('plan')->where('user_id', $user->getKey())
+            ->where('environment', $environment)->where('source', 'grant')
+            ->whereNull('revoked_at')->where('starts_at', '<=', now('UTC'))
+            ->where('ends_at', '>', now('UTC'))->orderByDesc('ends_at')->get()
+            ->first(fn (SubscriptionEntitlement $grant): bool => ($grant->features['valuation'] ?? false) === true);
         $comps = Schema::hasTable('complimentary_allocations')
             ? DB::table('complimentary_allocations')->where('user_id', $user->getKey())->where('environment', $environment)->orderByDesc('id')
                 ->get()->map(fn (object $entitlement): array => [
@@ -158,6 +165,17 @@ class StripeBillingController extends Controller
                 'pendingPriceVersionId' => $subscription->pending_price_id,
                 'billingMode' => 'legacy_subscription',
             ] : null),
+            'administrativeSubscription' => $administrativeGrant ? [
+                'status' => 'active',
+                'priceVersionId' => null,
+                'planName' => $administrativeGrant->plan?->name,
+                'displayName' => $administrativeGrant->plan?->name,
+                'durationMonths' => $administrativeGrant->plan?->duration_months,
+                'periodStart' => $administrativeGrant->starts_at->toIso8601String(),
+                'periodEnd' => $administrativeGrant->ends_at->toIso8601String(),
+                'cancelAtPeriodEnd' => true,
+                'billingMode' => 'administrative_grant',
+            ] : null,
             'complimentaryEntitlements' => $comps,
         ]])->header('Cache-Control', 'private, no-store');
     }

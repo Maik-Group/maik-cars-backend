@@ -3,10 +3,9 @@
 namespace App\Filament\Resources\AppUsers\Schemas;
 
 use App\Enums\PreferredLanguage;
-use App\Models\SubscriptionEntitlement;
 use App\Models\User;
-use App\Services\Subscriptions\DailyUsageService;
-use App\Services\Subscriptions\EntitlementResolver;
+use App\Services\Credits\CreditWalletService;
+use App\Services\Subscriptions\ActiveBillingPlan;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -14,110 +13,66 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\HtmlString;
 
 class AppUserForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Subscription access')->visible(fn (?User $record): bool => $record !== null && auth()->user()->can('view_subscriptions'))
-                    ->description('Store billing and administrative grants remain separate. Daily usage is shared across valid sources.')
-                    ->components([
-                        Placeholder::make('effective_subscription_access')->label('Effective access')->content(function (?User $record): string {
+        return $schema->components([
+            Section::make('Subscription & credits')
+                ->description('The current subscription and spendable credits, as displayed in the mobile app.')
+                ->visible(fn (?User $record): bool => $record !== null && auth()->user()?->can('view_subscriptions') === true)
+                ->columns(['default' => 1, 'md' => 2])
+                ->schema([
+                    Placeholder::make('current_subscription')->label('Subscription')
+                        ->content(function (?User $record): string {
                             if (! $record || ! $record->is_active) {
                                 return 'Inactive account';
                             }
-                            $access = app(EntitlementResolver::class)->resolve($record);
-                            $usage = app(DailyUsageService::class)->status($record, $access);
+                            $endsAt = ActiveBillingPlan::endsAt($record, (string) config('stripe_billing.environment'));
 
-                            return ($access['active'] ? 'Active' : 'No active entitlement').' · Daily allowance: '.($access['limit'] ?? 'Unlimited').' · Used: '.$usage['used'].' · Resets: '.$usage['resets_at'];
+                            return $endsAt ? 'Active until '.$endsAt->utc()->format('Y-m-d H:i').' UTC' : 'No active subscription';
                         }),
-                        Placeholder::make('subscription_history')->label('Access history')->content(function (?User $record): HtmlString {
-                            if (! $record) {
-                                return new HtmlString('');
-                            }
-                            $rows = SubscriptionEntitlement::query()->with('agreement')->where('user_id', $record->id)->latest()->limit(20)->get();
-
-                            return new HtmlString($rows->map(fn ($source): string => '<div>'.e(implode(' · ', [$source->source, $source->environment, $source->starts_at->toIso8601String(), $source->ends_at->toIso8601String(), $source->revoked_at || $source->agreement?->suppressed_at ? 'Locally revoked' : ($source->agreement?->provider_state ?? 'Granted')])).'</div>')->implode(''));
-                        }),
-                    ]),
-                Section::make(__('admin.ui.app_users.account'))
-                    ->description(__('admin.ui.app_users.account_description'))
-                    ->columns([
-                        'default' => 1,
-                        'md' => 2,
-                    ])
-                    ->components([
-                        TextInput::make('name')
-                            ->placeholder(__('admin.ui.app_users.name_placeholder'))
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('email')
-                            ->placeholder('user@example.com')
-                            ->required()
-                            ->email()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
-                        TextInput::make('password')
-                            ->placeholder(__('admin.ui.app_users.password_placeholder'))
-                            ->password()
-                            ->revealable()
-                            ->dehydrated(fn ($state): bool => filled($state))
-                            ->required(fn (string $operation): bool => $operation === 'create')
-                            ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
-                            ->maxLength(255),
-                        Toggle::make('is_active')
-                            ->label(__('admin.ui.app_users.active'))
-                            ->default(true),
-                        Toggle::make('unlimited_devices')
-                            ->label(__('admin.ui.app_users.unlimited_devices'))
-                            ->default(false),
-                        TextInput::make('discount_margin_percent')
-                            ->label(__('admin.ui.app_users.discount_margin'))
-                            ->numeric()
-                            ->minValue(-100)
-                            ->maxValue(4)
-                            ->step(1)
-                            ->default(0)
-                            ->suffix('%')
-                            ->helperText(__('admin.ui.app_users.discount_help')),
-                        Select::make('preferred_language')
-                            ->label(__('admin.ui.app_users.preferred_language'))
-                            ->placeholder(__('admin.ui.app_users.select_language'))
-                            ->options([
-                                PreferredLanguage::EN->value => 'English',
-                                PreferredLanguage::AR->value => 'Arabic',
-                                PreferredLanguage::BG->value => 'Bulgarian',
-                                PreferredLanguage::DE->value => 'German',
-                                PreferredLanguage::HR->value => 'Croatian',
-                                PreferredLanguage::HU->value => 'Hungarian (legacy)',
-                            ])
-                            ->default(PreferredLanguage::EN->value)
-                            ->required(),
-                    ]),
-                Section::make(__('admin.ui.app_users.authorized_device_section'))
-                    ->description(__('admin.ui.app_users.authorized_device_description'))
-                    ->visible(fn (string $operation): bool => $operation === 'edit')
-                    ->columns(2)
-                    ->components([
-                        Placeholder::make('device_binding_status')
-                            ->label(__('admin.ui.app_users.device_status'))
-                            ->content(fn (?User $record): HtmlString => new HtmlString(match (true) {
-                                $record?->unlimited_devices === true => '<strong style="color:#15803d">'.__('admin.ui.app_users.unlimited_devices').'</strong>',
-                                $record?->hasAuthorizedDeviceId() === true => '<strong style="color:#15803d">'.__('admin.ui.app_users.bound_device_id').'</strong>',
-                                $record?->hasAuthorizedDevice() === true => '<strong style="color:#b45309">'.__('admin.ui.app_users.bound_fcm').'</strong>',
-                                default => '<strong style="color:#b45309">'.__('admin.ui.app_users.not_bound_yet').'</strong>',
-                            })),
-                        Placeholder::make('device_bound_at_display')
-                            ->label(__('admin.ui.app_users.bound_since'))
-                            ->content(fn (?User $record): string => $record?->device_bound_at?->format('Y-m-d H:i:s') ?? '—'),
-                        Placeholder::make('device_binding_help')
-                            ->label(__('admin.ui.app_users.how_it_works'))
-                            ->content(__('admin.ui.app_users.device_help'))
-                            ->columnSpanFull(),
-                    ]),
-            ]);
+                    Placeholder::make('available_credits')->label('Available credits')
+                        ->content(fn (?User $record): string => $record
+                            ? number_format(app(CreditWalletService::class)->balance($record)).' credits'
+                            : '—'),
+                ]),
+            Section::make(__('admin.ui.app_users.account'))
+                ->description(__('admin.ui.app_users.account_description'))
+                ->columns(['default' => 1, 'md' => 2])
+                ->components([
+                    TextInput::make('name')
+                        ->placeholder(__('admin.ui.app_users.name_placeholder'))
+                        ->required()->maxLength(255),
+                    TextInput::make('email')
+                        ->placeholder('user@example.com')
+                        ->required()->email()->unique(ignoreRecord: true)->maxLength(255),
+                    TextInput::make('password')
+                        ->placeholder(__('admin.ui.app_users.password_placeholder'))
+                        ->password()->revealable()
+                        ->dehydrated(fn ($state): bool => filled($state))
+                        ->required(fn (string $operation): bool => $operation === 'create')
+                        ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
+                        ->maxLength(255),
+                    Toggle::make('is_active')->label(__('admin.ui.app_users.active'))->default(true),
+                    Toggle::make('unlimited_devices')->label(__('admin.ui.app_users.unlimited_devices'))->default(false),
+                    TextInput::make('discount_margin_percent')
+                        ->label(__('admin.ui.app_users.discount_margin'))
+                        ->numeric()->minValue(-100)->maxValue(4)->step(1)->default(0)
+                        ->suffix('%')->helperText(__('admin.ui.app_users.discount_help')),
+                    Select::make('preferred_language')
+                        ->label(__('admin.ui.app_users.preferred_language'))
+                        ->placeholder(__('admin.ui.app_users.select_language'))
+                        ->options([
+                            PreferredLanguage::EN->value => 'English',
+                            PreferredLanguage::AR->value => 'Arabic',
+                            PreferredLanguage::BG->value => 'Bulgarian',
+                            PreferredLanguage::DE->value => 'German',
+                            PreferredLanguage::HR->value => 'Croatian',
+                            PreferredLanguage::HU->value => 'Hungarian (legacy)',
+                        ])->default(PreferredLanguage::EN->value)->required(),
+                ]),
+        ]);
     }
 }

@@ -22,7 +22,7 @@ class CreateBillingPlanPrice extends CreateRecord
             'offer_key' => $data['offer_key'],
             'name' => $data['name'],
             'revision' => 1,
-            'environment' => $data['environment'],
+            'environment' => (string) config('stripe_billing.environment'),
             'kind' => 'topup',
             'subscription_plan_id' => null,
             'duration_months' => null,

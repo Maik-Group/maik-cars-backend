@@ -93,12 +93,12 @@ class AppUserResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return self::canManageAppUsers();
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return self::canManageAppUsers();
+        return false;
     }
 
     private static function canManageAppUsers(): bool

@@ -13,18 +13,12 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class SubscriptionPlanResource extends Resource
 {
     protected static ?string $model = SubscriptionPlan::class;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Subscriptions';
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->with('billingOffers');
-    }
+    protected static string|\UnitEnum|null $navigationGroup = 'Subscription';
 
     public static function form(Schema $schema): Schema
     {
@@ -36,9 +30,7 @@ class SubscriptionPlanResource extends Resource
         return $table->columns([
             TextColumn::make('name')->searchable(),
             TextColumn::make('duration_months')->label('Duration')->suffix(' months'),
-            TextColumn::make('credits')->label('Credits')
-                ->state(fn (SubscriptionPlan $record): string => $record->billingOffers
-                    ->whereNull('retired_at')->pluck('credits')->unique()->sort()->implode(', ') ?: '—'),
+            TextColumn::make('credits')->label('Credits')->numeric()->placeholder('—'),
             IconColumn::make('is_active')->label('Active')->boolean(),
         ])->defaultSort('sort_order')->recordActions([EditAction::make()]);
     }

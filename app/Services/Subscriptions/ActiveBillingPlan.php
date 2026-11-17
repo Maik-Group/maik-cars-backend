@@ -5,6 +5,7 @@ namespace App\Services\Subscriptions;
 use App\Models\BillingOrder;
 use App\Models\BillingSubscription;
 use App\Models\CreditGrant;
+use App\Models\SubscriptionEntitlement;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -30,7 +31,14 @@ class ActiveBillingPlan
                 ->where('source_type', 'paid_cycle')->where('source_key', 'stripe-term:'.$environment.':'.$order->getKey())
                 ->whereNull('held_at')->whereNull('revoked_at')->exists());
 
-        $end = max($recurringEnd ?? '', $prepaid?->period_end?->format('Y-m-d H:i:s') ?? '');
+        $grantedEnd = SubscriptionEntitlement::query()
+            ->where('user_id', $user->getKey())->where('environment', $environment)
+            ->where('source', 'grant')->whereNull('revoked_at')
+            ->where('features->valuation', true)
+            ->where('starts_at', '<=', $now)->where('ends_at', '>', $now)
+            ->max('ends_at');
+
+        $end = max($recurringEnd ?? '', $prepaid?->period_end?->format('Y-m-d H:i:s') ?? '', $grantedEnd ?? '');
 
         return $end === '' ? null : Carbon::parse($end, 'UTC');
     }

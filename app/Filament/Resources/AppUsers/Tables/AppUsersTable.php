@@ -5,8 +5,6 @@ namespace App\Filament\Resources\AppUsers\Tables;
 use App\Enums\PreferredLanguage;
 use App\Models\User;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
@@ -34,18 +32,18 @@ class AppUsersTable
                     ->boolean(),
                 TextColumn::make('preferred_language')
                     ->label(__('admin.ui.app_users.language'))
-                    ->badge(),
+                    ->badge()->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('unlimited_devices')
                     ->label(__('admin.ui.app_users.unlimited_devices'))
-                    ->boolean(),
+                    ->boolean()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('discount_margin_percent')
                     ->label(__('admin.ui.app_users.discount_margin'))
                     ->formatStateUsing(static fn (mixed $state): string => number_format((float) $state, 1).'%')
-                    ->sortable(),
+                    ->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label(__('admin.ui.app_users.created'))
                     ->since()
-                    ->sortable(),
+                    ->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
@@ -101,11 +99,6 @@ class AppUsersTable
                             ->send();
                     }),
                 EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }

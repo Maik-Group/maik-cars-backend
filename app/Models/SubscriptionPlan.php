@@ -12,11 +12,11 @@ class SubscriptionPlan extends Model
 
     protected $attributes = ['revision' => 1];
 
-    protected $fillable = ['key', 'name', 'tier_key', 'duration_months', 'service_level', 'daily_allowance', 'features', 'descriptions', 'is_active', 'is_visible', 'sort_order'];
+    protected $fillable = ['key', 'name', 'tier_key', 'duration_months', 'service_level', 'daily_allowance', 'credits', 'features', 'descriptions', 'is_active', 'is_visible', 'sort_order'];
 
     protected function casts(): array
     {
-        return ['duration_months' => 'integer', 'daily_allowance' => 'integer', 'features' => 'array', 'descriptions' => 'array', 'is_active' => 'boolean', 'is_visible' => 'boolean', 'revision' => 'integer'];
+        return ['duration_months' => 'integer', 'daily_allowance' => 'integer', 'credits' => 'integer', 'features' => 'array', 'descriptions' => 'array', 'is_active' => 'boolean', 'is_visible' => 'boolean', 'revision' => 'integer'];
     }
 
     protected static function booted(): void

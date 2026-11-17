@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class BillingPlanPriceResource extends Resource
 {
@@ -28,7 +29,13 @@ class BillingPlanPriceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Credit Packages';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Credits';
+    protected static string|\UnitEnum|null $navigationGroup = 'Subscription';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('kind', 'topup')
+            ->where('environment', config('stripe_billing.environment'));
+    }
 
     public static function canViewAny(): bool
     {
@@ -50,7 +57,6 @@ class BillingPlanPriceResource extends Resource
                     TextInput::make('credits')->label('Number of credits')->numeric()->integer()->minValue(1)->required(),
                     TextInput::make('price')->label('Price')->numeric()->step(0.01)->minValue(0.01)->required(),
                     Select::make('currency')->options(['EUR' => 'EUR (€)', 'USD' => 'USD ($)'])->default('EUR')->required(),
-                    Select::make('environment')->options(['sandbox' => 'Test', 'production' => 'Live'])->default('sandbox')->required(),
                 ]),
             Section::make('Stripe checkout')->description('Use the IDs of a one-time Stripe product and price. Publishing verifies the amount and currency.')
                 ->columns(2)->schema([
@@ -67,12 +73,9 @@ class BillingPlanPriceResource extends Resource
             TextColumn::make('credits')->label('Credits')->numeric()->sortable(),
             TextColumn::make('amount_minor')->label('Price')
                 ->formatStateUsing(fn ($state, BillingPlanPrice $record): string => number_format((int) $state / 100, 2).' '.$record->currency),
-            TextColumn::make('environment')->label('Mode')->badge(),
             TextColumn::make('package_status')->label('Status')
                 ->state(fn (BillingPlanPrice $record): string => $record->retired_at ? 'Retired' : ($record->checkoutEligible() ? 'Available' : 'Draft'))
                 ->badge(),
-            TextColumn::make('kind')->label('Offer type')->badge()->toggleable(isToggledHiddenByDefault: true),
-            TextColumn::make('subscriptionPlan.name')->label('Subscription plan')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
         ])->defaultSort('created_at', 'desc')->recordActions([
             Action::make('publish')->label('Verify Stripe and publish')
                 ->visible(fn (BillingPlanPrice $record) => ! $record->published_at && static::canViewAny())

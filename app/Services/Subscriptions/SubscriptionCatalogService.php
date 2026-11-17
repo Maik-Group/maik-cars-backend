@@ -23,7 +23,7 @@ class SubscriptionCatalogService
             'key' => ['required', 'alpha_dash', 'max:100', Rule::unique('subscription_plans', 'key')->ignore($plan?->getKey())],
             'name' => ['required', 'string', 'max:255'], 'tier_key' => ['required', 'alpha_dash', 'max:100'],
             'duration_months' => ['required', 'integer', Rule::in([1, 3, 6, 12])], 'service_level' => ['required', 'integer', 'min:1', 'max:1000'],
-            'daily_allowance' => ['nullable', 'integer', 'min:1', 'max:1000000'], 'features.valuation' => ['required', 'boolean'],
+            'daily_allowance' => ['nullable', 'integer', 'min:1', 'max:1000000'], 'credits' => ['sometimes', 'required', 'integer', 'min:1', 'max:1000000'], 'features.valuation' => ['required', 'boolean'],
             'descriptions' => ['nullable', 'array'], 'descriptions.*' => ['nullable', 'string', 'max:4000'],
             'is_active' => ['required', 'boolean'], 'is_visible' => ['required', 'boolean'], 'sort_order' => ['required', 'integer', 'min:0'],
         ])->validated();
