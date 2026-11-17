@@ -24,7 +24,7 @@ class SubscriptionDiagnostics extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->is_active && auth()->user()->can('view_subscription_diagnostics');
+        return false;
     }
 
     public function summary(): array

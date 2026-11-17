@@ -14,6 +14,11 @@ class SubscriptionAuditLogResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Subscriptions';
 
+    public static function canViewAny(): bool
+    {
+        return false;
+    }
+
     public static function table(Table $table): Table
     {
         return $table->columns([

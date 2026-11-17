@@ -26,6 +26,11 @@ class BillingAgreementResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Subscriptions';
 
+    public static function canViewAny(): bool
+    {
+        return false;
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with('user')->withCount('transactions');
@@ -59,7 +64,7 @@ class BillingAgreementResource extends Resource
     {
         return $schema->components([
             TextEntry::make('user.name'), TextEntry::make('provider'), TextEntry::make('environment'),
-            TextEntry::make('provider_state'), TextEntry::make('daily_allowance')->placeholder('Unlimited'),
+            TextEntry::make('provider_state'),
             TextEntry::make('entitlement.starts_at')->dateTime(), TextEntry::make('entitlement.ends_at')->dateTime(),
             TextEntry::make('verified_at')->dateTime(), TextEntry::make('suppressed_at')->dateTime(),
             TextEntry::make('suppression_reason'),

@@ -30,4 +30,9 @@ class SubscriptionPlan extends Model
     {
         return $this->hasMany(PlanStoreProduct::class);
     }
+
+    public function billingOffers(): HasMany
+    {
+        return $this->hasMany(BillingPlanPrice::class);
+    }
 }

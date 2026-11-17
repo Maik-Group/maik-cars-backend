@@ -19,6 +19,11 @@ class SubscriptionEntitlementResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Subscriptions';
 
+    public static function canViewAny(): bool
+    {
+        return false;
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['user', 'agreement']);
@@ -28,7 +33,7 @@ class SubscriptionEntitlementResource extends Resource
     {
         return $table->columns([
             TextColumn::make('user.name')->searchable(), TextColumn::make('source')->badge(), TextColumn::make('environment'),
-            TextColumn::make('daily_allowance')->placeholder('Unlimited'), TextColumn::make('starts_at')->dateTime(), TextColumn::make('ends_at')->dateTime(),
+            TextColumn::make('starts_at')->dateTime(), TextColumn::make('ends_at')->dateTime(),
             TextColumn::make('revoked_at')->dateTime()->placeholder('—'), TextColumn::make('agreement.provider_state')->label('Billing state'),
             TextColumn::make('agreement.suppressed_at')->label('Locally suppressed')->dateTime(), TextColumn::make('reason')->wrap(),
         ])->defaultSort('created_at', 'desc')->filters([
