@@ -22,6 +22,9 @@ class CreateUser extends CreateRecord
         /** @var User $record */
         $record = $this->getRecord();
 
+        // Administrators created through the dashboard are already approved by an authorized user.
+        $record->forceFill(['email_verified_at' => now()])->save();
+
         if (! $record->hasRole('admin')) {
             $record->assignRole('admin');
         }

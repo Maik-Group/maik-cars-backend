@@ -17,6 +17,8 @@ class CreateAppUser extends CreateRecord
         return DB::transaction(function () use ($data): User {
             /** @var User $record */
             $record = parent::handleRecordCreation($data);
+            // Accounts provisioned by an authorized administrator do not need a verification email.
+            $record->forceFill(['email_verified_at' => now()])->save();
             $record->assignRole('app_user');
             app(CreditWalletService::class)->grantWelcomeCredits($record);
 

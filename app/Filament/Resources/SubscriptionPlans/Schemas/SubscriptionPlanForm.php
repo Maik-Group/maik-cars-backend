@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SubscriptionPlans\Schemas;
 
+use App\Filament\Support\CurrencyOfferPricing;
 use App\Models\SubscriptionPlan;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -17,7 +18,7 @@ class SubscriptionPlanForm
     {
         return $schema->components([
             Section::make('Subscription details')
-                ->description('The plan credits are granted when an administrator assigns a subscription. Stripe offer prices are managed separately.')
+                ->description('The plan credits are granted when an administrator assigns a subscription. EUR and USD prices use versioned Stripe offers; published prices are never edited in place.')
                 ->columns(2)->schema([
                     TextInput::make('name')->required()->maxLength(255),
                     TextInput::make('credits')->label('Credits included')->numeric()->integer()->minValue(1)->maxValue(1000000)->required(),
@@ -25,6 +26,7 @@ class SubscriptionPlanForm
                     Toggle::make('is_active')->label('Active')->default(false),
                     TextInput::make('sort_order')->numeric()->minValue(0)->default(0)->required(),
                 ]),
+            CurrencyOfferPricing::section()->visible(fn (): bool => auth()->user()?->can('manage_subscription_products') === true),
             Section::make('Descriptions')->collapsed()->schema(array_map(
                 fn (string $locale) => Textarea::make('descriptions.'.$locale)->label(strtoupper($locale))->maxLength(4000),
                 ['ar', 'en', 'bg', 'de', 'hr']

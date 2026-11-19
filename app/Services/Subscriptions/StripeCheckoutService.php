@@ -44,8 +44,8 @@ class StripeCheckoutService
             ->whereNotNull('published_at')
             ->orderByDesc('revision')->orderByDesc('id')->get()
             // Old revisions remain stored for previous orders, but only the
-            // latest published version per offer key can be sold or displayed.
-            ->unique('offer_key')->sortBy(fn (BillingPlanPrice $price) => $price->kind.'-'.str_pad((string) $price->amount_minor, 12, '0', STR_PAD_LEFT))->values();
+            // latest published version per offer key AND currency can be sold or displayed.
+            ->unique(fn (BillingPlanPrice $price): string => $price->offer_key.'-'.$price->currency)->sortBy(fn (BillingPlanPrice $price) => $price->kind.'-'.str_pad((string) $price->amount_minor, 12, '0', STR_PAD_LEFT))->values();
         // Once commercial offers are published, QA fixtures must not appear
         // in the customer-facing catalog. Preserve the existing catalog until
         // at least one commercial offer is published, avoiding an empty store.
@@ -150,7 +150,7 @@ class StripeCheckoutService
                 throw new HttpException(409, 'OFFER_CHANGED');
             }
             if (BillingPlanPrice::query()->where('environment', $environment)
-                ->where('offer_key', $offer->offer_key)->whereNull('retired_at')
+                ->where('offer_key', $offer->offer_key)->where('currency', $offer->currency)->whereNull('retired_at')
                 ->whereNotNull('published_at')->where('revision', '>', $offer->revision)->exists()) {
                 throw new HttpException(409, 'OFFER_CHANGED');
             }
@@ -398,7 +398,7 @@ class StripeCheckoutService
     public function currentDisplayNameForPrice(BillingPlanPrice $original, ?string $historicalName = null): string
     {
         $latest = BillingPlanPrice::query()->where('environment', $original->environment)
-            ->where('offer_key', $original->offer_key)->whereNotNull('published_at')
+            ->where('offer_key', $original->offer_key)->where('currency', $original->currency)->whereNotNull('published_at')
             ->whereNull('retired_at')->orderByDesc('revision')->first();
 
         return $latest && $latest->kind === $original->kind
